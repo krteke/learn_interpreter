@@ -84,6 +84,10 @@ pub enum StmtExpr {
         then_branch: Box<Expr>,
         else_branch: Option<Box<Expr>>,
     },
+    While {
+        condition: Box<Expr>,
+        body: Box<Expr>,
+    },
     Var(Var),
 }
 
@@ -241,6 +245,13 @@ impl Expr {
                         return then_branch.eval();
                     } else if let Some(else_branch) = else_branch {
                         return else_branch.eval();
+                    }
+
+                    Ok(Value::Nil)
+                }
+                StmtExpr::While { condition, body } => {
+                    while condition.eval()?.is_truthy() {
+                        body.eval()?;
                     }
 
                     Ok(Value::Nil)
