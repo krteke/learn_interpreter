@@ -16,11 +16,7 @@ pub struct Interpreter;
 impl Interpreter {
     pub fn interpret(&mut self, stmts: Vec<StmtExpr>) -> Result<()> {
         for statement in stmts {
-            self.evaluate(Expr::Stmt(statement.clone()))?;
-
-            // if let StmtExpr::Var(v) = statement {
-            //     self.environment.define(v.name.lexeme, value);
-            // }
+            self.evaluate(Expr::Stmt(statement))?;
         }
 
         Ok(())

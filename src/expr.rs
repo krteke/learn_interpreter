@@ -14,6 +14,7 @@ pub enum Expr {
     Unary(UnaryExpr),
     Stmt(StmtExpr),
     Variable(Token),
+    Assign(AssignExpr),
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +77,12 @@ impl UnaryExpr {
 pub enum StmtExpr {
     Expr(Box<Expr>),
     Print(Box<Expr>),
+    Block(Vec<StmtExpr>),
+    If {
+        condition: Box<Expr>,
+        then_branch: Box<StmtExpr>,
+        else_branch: Option<Box<StmtExpr>>,
+    },
     Var(Var),
 }
 
@@ -90,6 +97,21 @@ impl Var {
         Self {
             name,
             initializer: initializer.map(Box::new),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AssignExpr {
+    pub name: Token,
+    pub value: Box<Expr>,
+}
+
+impl AssignExpr {
+    pub fn new(name: Token, value: Expr) -> Self {
+        Self {
+            name,
+            value: Box::new(value),
         }
     }
 }
@@ -176,9 +198,45 @@ impl Expr {
 
                     Ok(value)
                 }
+                StmtExpr::Block(b) => {
+                    let previous = ENV.take();
+
+                    ENV.with(|env| {
+                        env.borrow_mut().enclosing = Some(Box::new(previous.clone()));
+                    });
+
+                    for stmt in b {
+                        Expr::Stmt(stmt.clone()).eval()?;
+                    }
+
+                    ENV.set(previous);
+                    Ok(Value::Nil)
+                }
+                StmtExpr::If {
+                    condition,
+                    then_branch,
+                    else_branch,
+                } => {
+                    // let condition = c.eval()?;
+                    // if let Value::Bool(true) = condition {
+                    //     Expr::Stmt(*t.clone()).eval()?;
+                    // } else {
+                    //     if let Some(else_branch) = e {
+                    //         Expr::Stmt(*else_branch.clone()).eval()?;
+                    //     }
+                    // }
+                    // Ok(Value::Nil)
+                    todo!()
+                }
             },
             Expr::Variable(v) => {
                 let value = ENV.with(|e| e.borrow().get(v))?;
+
+                Ok(value)
+            }
+            Expr::Assign(a) => {
+                let value = a.value.eval()?;
+                ENV.with(|env| env.borrow_mut().assign(&a.name, value.clone()))?;
 
                 Ok(value)
             }
