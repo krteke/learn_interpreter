@@ -80,8 +80,8 @@ pub enum StmtExpr {
     Block(Vec<StmtExpr>),
     If {
         condition: Box<Expr>,
-        then_branch: Box<StmtExpr>,
-        else_branch: Option<Box<StmtExpr>>,
+        then_branch: Box<Expr>,
+        else_branch: Option<Box<Expr>>,
     },
     Var(Var),
 }
@@ -217,16 +217,15 @@ impl Expr {
                     then_branch,
                     else_branch,
                 } => {
-                    // let condition = c.eval()?;
-                    // if let Value::Bool(true) = condition {
-                    //     Expr::Stmt(*t.clone()).eval()?;
-                    // } else {
-                    //     if let Some(else_branch) = e {
-                    //         Expr::Stmt(*else_branch.clone()).eval()?;
-                    //     }
-                    // }
-                    // Ok(Value::Nil)
-                    todo!()
+                    let condition_value = condition.eval()?;
+
+                    if condition_value == Value::Bool(true) {
+                        return then_branch.eval();
+                    } else if let Some(else_branch) = else_branch {
+                        return else_branch.eval();
+                    }
+
+                    Ok(Value::Nil)
                 }
             },
             Expr::Variable(v) => {

@@ -83,8 +83,32 @@ impl Parser {
                 self.advance();
                 Ok(StmtExpr::Block(self.block()?))
             }
+            If => {
+                self.advance();
+                self.if_statement()
+            }
             _ => self.expression_statement(),
         }
+    }
+
+    fn if_statement(&mut self) -> Result<StmtExpr> {
+        self.consume(LeftParen, "Expect '(' after 'if'.")?;
+        let condition = self.expression()?;
+        self.consume(RightParen, "Expect ')' after 'if condition.")?;
+
+        let then_branch = Expr::Stmt(self.statement()?);
+        let mut else_branch = None;
+
+        if self.peek().token_type == Else {
+            self.advance();
+            else_branch = Some(Expr::Stmt(self.statement()?));
+        }
+
+        Ok(StmtExpr::If {
+            condition: Box::new(condition),
+            then_branch: Box::new(then_branch),
+            else_branch: else_branch.map(Box::new),
+        })
     }
 
     fn block(&mut self) -> Result<Vec<StmtExpr>> {
