@@ -63,7 +63,7 @@ fn run(source: &str) -> Result<()> {
     let mut parser = Parser::new(scanner.tokens);
     let expr = parser.parse();
 
-    let interpreter = Interpreter;
+    let mut interpreter = Interpreter;
     if let Ok(expr) = expr {
         interpreter.interpret(expr)?;
     }

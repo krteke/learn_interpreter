@@ -21,7 +21,7 @@ impl Environment {
         self.value.insert(name, value);
     }
 
-    pub fn get(&self, name: Token) -> Result<Value> {
+    pub fn get(&self, name: &Token) -> Result<Value> {
         self.value.get(&name.lexeme).cloned().ok_or_else(|| {
             Error::Runtime(RuntimeError::new(
                 name.clone(),

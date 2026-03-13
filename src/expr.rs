@@ -1,11 +1,12 @@
 use crate::{
     error::{Error, Result, RuntimeError},
+    interpreter::ENV,
     token::{Literal, Token},
     token_type::TokenType,
     value::Value,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Binary(BinaryExpr),
     Grouping(GroupingExpr),
@@ -15,7 +16,7 @@ pub enum Expr {
     Variable(Token),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub left: Box<Expr>,
     pub operator: Token,
@@ -32,7 +33,7 @@ impl BinaryExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GroupingExpr {
     pub expression: Box<Expr>,
 }
@@ -45,7 +46,7 @@ impl GroupingExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LiteralExpr {
     pub value: Literal,
 }
@@ -56,7 +57,7 @@ impl LiteralExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnaryExpr {
     pub operator: Token,
     pub right: Box<Expr>,
@@ -71,14 +72,14 @@ impl UnaryExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StmtExpr {
     Expr(Box<Expr>),
     Print(Box<Expr>),
     Var(Var),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Var {
     pub name: Token,
     pub initializer: Option<Box<Expr>>,
@@ -160,9 +161,27 @@ impl Expr {
                     println!("{}", value);
                     Ok(value)
                 }
-                _ => todo!(),
+                StmtExpr::Var(v) => {
+                    let value = v
+                        .initializer
+                        .as_ref()
+                        .map(|v| v.eval())
+                        .transpose()?
+                        .unwrap_or(Value::Nil);
+
+                    ENV.with(|env| {
+                        env.borrow_mut()
+                            .define(v.name.lexeme.clone(), value.clone());
+                    });
+
+                    Ok(value)
+                }
             },
-            Expr::Variable(v) => todo!(),
+            Expr::Variable(v) => {
+                let value = ENV.with(|e| e.borrow().get(v))?;
+
+                Ok(value)
+            }
         }
     }
 }
