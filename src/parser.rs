@@ -118,8 +118,60 @@ impl Parser {
                 self.advance();
                 self.while_statement()
             }
+            For => {
+                self.advance();
+                self.for_statement()
+            }
             _ => self.expression_statement(),
         }
+    }
+
+    fn for_statement(&mut self) -> Result<StmtExpr> {
+        self.consume(LeftParen, "Expect '(' after 'for'.")?;
+        let init = match self.peek().token_type {
+            Semicolon => {
+                self.advance();
+                None
+            }
+            Var => {
+                self.advance();
+                Some(self.var_declaration()?)
+            }
+            _ => Some(self.expression_statement()?),
+        };
+
+        let mut condition = None;
+        if self.peek().token_type != Semicolon {
+            self.advance();
+            condition = Some(self.expression()?);
+        }
+
+        self.consume(Semicolon, "Expect ';' after for loop condition.")?;
+
+        let mut increment = None;
+        if self.peek().token_type != RightParen {
+            self.advance();
+            increment = Some(self.expression()?);
+        }
+
+        self.consume(RightParen, "Expect ')' after for loop increment.")?;
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            body = StmtExpr::Block(vec![body, StmtExpr::Expr(Box::new(increment))]);
+        }
+
+        let condition = condition.unwrap_or(Expr::Literal(LiteralExpr::new(Literal::Bool(true))));
+        body = StmtExpr::While {
+            condition: Box::new(condition),
+            body: Box::new(Expr::Stmt(body)),
+        };
+
+        if let Some(init) = init {
+            body = StmtExpr::Block(vec![StmtExpr::Expr(Box::new(Expr::Stmt(init))), body]);
+        }
+
+        Ok(body)
     }
 
     fn while_statement(&mut self) -> Result<StmtExpr> {
