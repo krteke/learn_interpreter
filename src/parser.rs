@@ -1,6 +1,9 @@
 use crate::{
     error::{Error, ParserError, Result},
-    expr::{AssignExpr, BinaryExpr, Expr, GroupingExpr, LiteralExpr, StmtExpr, UnaryExpr, Var},
+    expr::{
+        AssignExpr, BinaryExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, StmtExpr, UnaryExpr,
+        Var,
+    },
     token::{Literal, Token},
     token_type::TokenType::{self, *},
 };
@@ -58,7 +61,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
 
         if self.peek().token_type == Equal {
             self.advance();
@@ -68,6 +71,30 @@ impl Parser {
             if let Expr::Variable(v) = expr {
                 return Ok(Expr::Assign(AssignExpr::new(v, value)));
             }
+        }
+
+        Ok(expr)
+    }
+
+    fn or(&mut self) -> Result<Expr> {
+        let mut expr = self.and()?;
+
+        while self.peek().token_type == Or {
+            let operator = self.advance();
+            let right = self.and()?;
+            expr = Expr::Logical(LogicalExpr::new(expr, operator, right));
+        }
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr> {
+        let mut expr = self.equality()?;
+
+        while self.peek().token_type == And {
+            let operator = self.advance();
+            let right = self.equality()?;
+            expr = Expr::Logical(LogicalExpr::new(expr, operator, right));
         }
 
         Ok(expr)

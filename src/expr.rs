@@ -15,6 +15,7 @@ pub enum Expr {
     Stmt(StmtExpr),
     Variable(Token),
     Assign(AssignExpr),
+    Logical(LogicalExpr),
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +113,23 @@ impl AssignExpr {
         Self {
             name,
             value: Box::new(value),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LogicalExpr {
+    pub left: Box<Expr>,
+    pub operator: Token,
+    pub right: Box<Expr>,
+}
+
+impl LogicalExpr {
+    pub fn new(left: Expr, operator: Token, right: Expr) -> Self {
+        Self {
+            left: Box::new(left),
+            operator,
+            right: Box::new(right),
         }
     }
 }
@@ -219,7 +237,7 @@ impl Expr {
                 } => {
                     let condition_value = condition.eval()?;
 
-                    if condition_value == Value::Bool(true) {
+                    if condition_value.is_truthy() {
                         return then_branch.eval();
                     } else if let Some(else_branch) = else_branch {
                         return else_branch.eval();
@@ -238,6 +256,19 @@ impl Expr {
                 ENV.with(|env| env.borrow_mut().assign(&a.name, value.clone()))?;
 
                 Ok(value)
+            }
+            Expr::Logical(l) => {
+                let left = l.left.eval()?;
+
+                if l.operator.token_type == TokenType::Or {
+                    if left.is_truthy() {
+                        return Ok(left);
+                    }
+                } else if !left.is_truthy() {
+                    return Ok(left);
+                }
+
+                l.right.eval()
             }
         }
     }

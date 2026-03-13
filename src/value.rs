@@ -13,6 +13,16 @@ pub enum Value {
     Nil,
 }
 
+impl Value {
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Bool(b) => *b,
+            Value::String(_) | Value::Number(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl From<Literal> for Value {
     fn from(value: Literal) -> Self {
         match value {
