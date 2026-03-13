@@ -140,19 +140,19 @@ impl Parser {
             _ => Some(self.expression_statement()?),
         };
 
-        let mut condition = None;
-        if self.peek().token_type != Semicolon {
-            self.advance();
-            condition = Some(self.expression()?);
-        }
+        let condition = if self.peek().token_type != Semicolon {
+            Some(self.expression()?)
+        } else {
+            None
+        };
 
         self.consume(Semicolon, "Expect ';' after for loop condition.")?;
 
-        let mut increment = None;
-        if self.peek().token_type != RightParen {
-            self.advance();
-            increment = Some(self.expression()?);
-        }
+        let increment = if self.peek().token_type != RightParen {
+            Some(self.expression()?)
+        } else {
+            None
+        };
 
         self.consume(RightParen, "Expect ')' after for loop increment.")?;
         let mut body = self.statement()?;

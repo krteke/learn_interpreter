@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::OnceLock};
+use std::cell::RefCell;
 
 use crate::{
     environment::Environment,

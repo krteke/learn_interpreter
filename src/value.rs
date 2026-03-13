@@ -52,12 +52,6 @@ impl From<bool> for Value {
     }
 }
 
-impl From<()> for Value {
-    fn from(value: ()) -> Self {
-        Value::Nil
-    }
-}
-
 impl Neg for Value {
     type Output = Value;
 

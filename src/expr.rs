@@ -222,17 +222,24 @@ impl Expr {
                 }
                 StmtExpr::Block(b) => {
                     let previous = ENV.take();
+                    let new_env = crate::environment::Environment::new_with_enclosing(previous);
+                    ENV.set(new_env);
 
-                    ENV.with(|env| {
-                        env.borrow_mut().enclosing = Some(Box::new(previous.clone()));
-                    });
+                    let result = (|| {
+                        for stmt in b {
+                            Expr::Stmt(stmt.clone()).eval()?;
+                        }
+                        Ok(Value::Nil)
+                    })();
 
-                    for stmt in b {
-                        Expr::Stmt(stmt.clone()).eval()?;
+                    let mut current = ENV.take();
+                    if let Some(enclosing) = current.enclosing.take() {
+                        ENV.set(*enclosing);
+                    } else {
+                        panic!("Environment corrupted: expected enclosing environment.");
                     }
 
-                    ENV.set(previous);
-                    Ok(Value::Nil)
+                    result
                 }
                 StmtExpr::If {
                     condition,

@@ -10,4 +10,6 @@ strum_macros = "0.28.0"
 [profile.release]
 opt-level = 3
 strip = true
-lto = true
+lto = "fat"
+panic = "abort"
+codegen-units = 1
