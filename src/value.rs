@@ -3,7 +3,7 @@ use std::{
     ops::{Add, Div, Mul, Neg, Not, Sub},
 };
 
-use crate::token::Literal;
+use crate::{error::Result, token::Literal};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -20,6 +20,10 @@ impl Value {
             Value::String(_) | Value::Number(_) => true,
             _ => false,
         }
+    }
+
+    pub fn call(&self, args: &[Value]) -> Result<Value> {
+        todo!()
     }
 }
 

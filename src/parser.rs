@@ -1,8 +1,8 @@
 use crate::{
     error::{Error, ParserError, Result},
     expr::{
-        AssignExpr, BinaryExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, StmtExpr, UnaryExpr,
-        Var,
+        AssignExpr, BinaryExpr, CallExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, StmtExpr,
+        UnaryExpr, Var,
     },
     token::{Literal, Token},
     token_type::TokenType::{self, *},
@@ -287,8 +287,49 @@ impl Parser {
 
                 Ok(Expr::Unary(UnaryExpr::new(operator, right)))
             }
-            _ => self.primary(),
+            _ => self.call(),
         }
+    }
+
+    fn call(&mut self) -> Result<Expr> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.peek().token_type == LeftParen {
+                self.advance();
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr> {
+        let mut args = Vec::new();
+        if self.peek().token_type != RightParen {
+            loop {
+                if args.len() >= u16::MAX as usize {
+                    return Err(Error::Parser(ParserError::new(
+                        self.peek().clone(),
+                        "Too many arguments.".to_string(),
+                    )));
+                }
+                args.push(self.expression()?);
+
+                let is_comma = self.peek().token_type == Comma;
+                self.advance();
+
+                if !is_comma {
+                    break;
+                }
+            }
+        }
+
+        let paren = self.consume(RightParen, "Expected ')' after arguments.")?;
+
+        Ok(Expr::Call(CallExpr::new(callee, paren, args)))
     }
 
     fn primary(&mut self) -> Result<Expr> {

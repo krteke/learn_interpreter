@@ -9,6 +9,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Expr {
     Binary(BinaryExpr),
+    Call(CallExpr),
     Grouping(GroupingExpr),
     Literal(LiteralExpr),
     Unary(UnaryExpr),
@@ -134,6 +135,23 @@ impl LogicalExpr {
             left: Box::new(left),
             operator,
             right: Box::new(right),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CallExpr {
+    pub callee: Box<Expr>,
+    pub paren: Token,
+    pub args: Vec<Expr>,
+}
+
+impl CallExpr {
+    pub fn new(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {
+        Self {
+            callee: Box::new(callee),
+            paren,
+            args,
         }
     }
 }
@@ -287,6 +305,16 @@ impl Expr {
                 }
 
                 l.right.eval()
+            }
+            Expr::Call(c) => {
+                let callee = c.callee.eval()?;
+
+                let mut args = Vec::new();
+                for arg in c.args.iter() {
+                    args.push(arg.eval()?);
+                }
+
+                callee.call(&args)
             }
         }
     }
