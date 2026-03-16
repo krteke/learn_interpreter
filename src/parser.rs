@@ -1,10 +1,10 @@
 use crate::{
-    error::{Error, ParserError, Result},
+    error::{Error, ParserError, Result, RuntimeError},
     expr::{
         AssignExpr, BinaryExpr, CallExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr,
         Var,
     },
-    stmt::Stmt,
+    stmt::{FunctionStmt, IfStmt, ReturnStmt, Stmt, WhileStmt},
     token::{Literal, Token},
     token_type::TokenType::{self, *},
 };
@@ -39,8 +39,44 @@ impl Parser {
                 self.advance();
                 self.var_declaration()
             }
+            Fun => {
+                self.advance();
+                self.function("function")
+            }
             _ => self.statement(),
         }
+    }
+
+    fn function(&mut self, kind: &str) -> Result<Stmt> {
+        let name = self.consume(Identifier, &format!("Expect {} name.", kind))?;
+        self.consume(LeftParen, &format!("Expect '(' after {} name.", kind))?;
+
+        let mut parameters = Vec::new();
+        if self.peek().token_type != RightParen {
+            loop {
+                if parameters.len() >= u16::MAX as usize {
+                    return Err(Error::Runtime(RuntimeError::new(
+                        self.peek().clone(),
+                        "Too many arguments.".to_string(),
+                    )));
+                }
+
+                parameters.push(self.consume(Identifier, "Expect parameter name.")?);
+
+                if self.peek().token_type == Comma {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        self.consume(RightParen, "Expect ')' after parameters.")?;
+        self.consume(LeftBrace, "Expect '{' before function body.")?;
+
+        let body = self.block()?;
+
+        Ok(Stmt::Function(FunctionStmt::new(name, parameters, body)))
     }
 
     fn var_declaration(&mut self) -> Result<Stmt> {
@@ -123,8 +159,25 @@ impl Parser {
                 self.advance();
                 self.for_statement()
             }
+            Return => {
+                self.advance();
+                self.return_statement()
+            }
             _ => self.expression_statement(),
         }
+    }
+
+    fn return_statement(&mut self) -> Result<Stmt> {
+        let keyword = self.previous().clone();
+        let mut value = Expr::Literal(LiteralExpr::new(Literal::Nil));
+
+        if self.peek().token_type != Semicolon {
+            value = self.expression()?;
+        }
+
+        self.consume(Semicolon, "Expect ';' after return value.")?;
+
+        Ok(Stmt::Return(ReturnStmt::new(keyword, value)))
     }
 
     fn for_statement(&mut self) -> Result<Stmt> {
@@ -163,10 +216,7 @@ impl Parser {
         }
 
         let condition = condition.unwrap_or(Expr::Literal(LiteralExpr::new(Literal::Bool(true))));
-        body = Stmt::While {
-            condition,
-            body: Box::new(body),
-        };
+        body = Stmt::While(WhileStmt::new(condition, body));
 
         if let Some(init) = init {
             body = Stmt::Block(vec![init, body]);
@@ -181,10 +231,7 @@ impl Parser {
         self.consume(RightParen, "Expect ')' after condition.")?;
         let body = self.statement()?;
 
-        Ok(Stmt::While {
-            condition,
-            body: Box::new(body),
-        })
+        Ok(Stmt::While(WhileStmt::new(condition, body)))
     }
 
     fn if_statement(&mut self) -> Result<Stmt> {
@@ -200,11 +247,7 @@ impl Parser {
             else_branch = Some(self.statement()?);
         }
 
-        Ok(Stmt::If {
-            condition,
-            then_branch: Box::new(then_branch),
-            else_branch: else_branch.map(Box::new),
-        })
+        Ok(Stmt::If(IfStmt::new(condition, then_branch, else_branch)))
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>> {
@@ -319,10 +362,9 @@ impl Parser {
                 }
                 args.push(self.expression()?);
 
-                let is_comma = self.peek().token_type == Comma;
-                self.advance();
-
-                if !is_comma {
+                if self.peek().token_type == Comma {
+                    self.advance();
+                } else {
                     break;
                 }
             }

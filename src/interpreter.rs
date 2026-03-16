@@ -1,13 +1,16 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
+    action::Action,
+    clock::Clock,
     environment::Environment,
     error::{Error, Result, RuntimeError},
     expr::Expr,
+    lox_function::LoxFunction,
     stmt::Stmt,
     token::Token,
     token_type::TokenType,
-    value::Value,
+    value::{Callable, Value},
 };
 
 pub struct Interpreter {
@@ -18,6 +21,10 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         let globals = Rc::new(RefCell::new(Environment::default()));
+        globals
+            .borrow_mut()
+            .define("clock".to_string(), Value::Function(Rc::new(Clock)));
+
         Self {
             globals: globals.clone(),
             env: globals,
@@ -26,7 +33,10 @@ impl Interpreter {
 
     pub fn interpret(&mut self, stmts: &[Stmt]) -> Result<()> {
         for stmt in stmts {
-            self.execute(stmt)?;
+            let action = self.execute(stmt)?;
+            // if let Action::Return(value) = action {
+            //     return Ok(());
+            // }
         }
 
         Ok(())
@@ -119,12 +129,30 @@ impl Interpreter {
                     args.push(self.evaluate(arg)?);
                 }
 
-                callee.call(&args)
+                if let Value::Function(function) = callee {
+                    if args.len() != function.arity() {
+                        return Err(Error::Runtime(RuntimeError::new(
+                            c.paren.clone(),
+                            format!(
+                                "Expected {} arguments but got {}.",
+                                function.arity(),
+                                args.len()
+                            ),
+                        )));
+                    }
+
+                    function.call(self, args)
+                } else {
+                    Err(Error::Runtime(RuntimeError::new(
+                        c.paren.clone(),
+                        "Can only call functions and classes".to_string(),
+                    )))
+                }
             }
         }
     }
 
-    fn execute(&mut self, stmt: &Stmt) -> Result<()> {
+    pub fn execute(&mut self, stmt: &Stmt) -> Result<Action> {
         match stmt {
             Stmt::Expr(e) => {
                 self.evaluate(e)?;
@@ -150,34 +178,56 @@ impl Interpreter {
 
                 self.execute_block(b, new_env)?;
             }
-            Stmt::If {
-                condition,
-                then_branch,
-                else_branch,
-            } => {
-                let condition_value = self.evaluate(condition)?;
+            Stmt::If(i) => {
+                let condition_value = self.evaluate(&i.condition)?;
 
                 if condition_value.is_truthy() {
-                    self.execute(then_branch)?;
-                } else if let Some(else_branch) = else_branch {
-                    self.execute(else_branch)?;
+                    return self.execute(&i.then_branch);
+                } else if let Some(else_branch) = &i.else_branch {
+                    return self.execute(else_branch);
                 }
             }
-            Stmt::While { condition, body } => {
-                while self.evaluate(condition)?.is_truthy() {
-                    self.execute(body)?;
+            Stmt::While(w) => {
+                while self.evaluate(&w.condition)?.is_truthy() {
+                    let action = self.execute(&w.body)?;
+                    if let Action::Return(_) = action {
+                        return Ok(action);
+                    }
                 }
+            }
+            Stmt::Function(f) => {
+                let fun = LoxFunction::new(f.clone(), self.env.clone());
+                self.env
+                    .borrow_mut()
+                    .define(f.name.lexeme.clone(), Value::Function(Rc::new(fun)));
+            }
+            Stmt::Return(r) => {
+                let value = self.evaluate(&r.value)?;
+                return Ok(Action::Return(value));
             }
         };
 
-        Ok(())
+        Ok(Action::None)
     }
 
-    fn execute_block(&mut self, stmts: &[Stmt], env: Rc<RefCell<Environment>>) -> Result<()> {
+    pub fn execute_block(
+        &mut self,
+        stmts: &[Stmt],
+        env: Rc<RefCell<Environment>>,
+    ) -> Result<Action> {
         let previous = self.env.clone();
         self.env = env;
 
-        let result = stmts.iter().try_for_each(|stmt| self.execute(stmt));
+        let result = (|| {
+            for stmt in stmts {
+                let action = self.execute(stmt)?;
+                if let Action::Return(_) = action {
+                    return Ok(action);
+                }
+            }
+            Ok(Action::None)
+        })();
+
         self.env = previous;
 
         result

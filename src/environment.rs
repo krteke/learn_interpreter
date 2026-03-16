@@ -6,7 +6,7 @@ use crate::{
     value::Value,
 };
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Environment {
     pub enclosing: Option<Rc<RefCell<Environment>>>,
     pub values: HashMap<String, Value>,

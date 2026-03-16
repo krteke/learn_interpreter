@@ -1,15 +1,22 @@
 use std::{
-    fmt::Display,
+    fmt::{Debug, Display},
     ops::{Add, Div, Mul, Neg, Not, Sub},
+    rc::Rc,
 };
 
-use crate::{error::Result, token::Literal};
+use crate::{error::Result, interpreter::Interpreter, token::Literal};
 
-#[derive(Debug, Clone)]
+pub trait Callable: Debug + Display {
+    fn arity(&self) -> usize;
+    fn call(&self, interpreter: &mut Interpreter, args: Vec<Value>) -> Result<Value>;
+}
+
+#[derive(Clone, Debug)]
 pub enum Value {
     String(String),
     Number(f64),
     Bool(bool),
+    Function(Rc<dyn Callable>),
     Nil,
 }
 
@@ -21,9 +28,20 @@ impl Value {
             _ => false,
         }
     }
+}
 
-    pub fn call(&self, args: &[Value]) -> Result<Value> {
+impl Callable for Value {
+    fn arity(&self) -> usize {
         todo!()
+    }
+
+    fn call(&self, interpreter: &mut Interpreter, args: Vec<Value>) -> Result<Value> {
+        match self {
+            Value::Function(f) => f.call(interpreter, args),
+            _ => {
+                todo!()
+            }
+        }
     }
 }
 
@@ -131,6 +149,7 @@ impl PartialEq for Value {
             (Value::String(l), Value::String(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::Nil, Value::Nil) => true,
+            (Value::Function(l), Value::Function(r)) => Rc::ptr_eq(l, r),
             _ => false,
         }
     }
@@ -158,6 +177,7 @@ impl Display for Value {
             }
             Value::Bool(b) => b.to_string(),
             Value::Nil => "nil".to_string(),
+            Value::Function(v) => v.to_string(),
         };
 
         write!(f, "{}", str)

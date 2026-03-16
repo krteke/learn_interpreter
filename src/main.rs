@@ -7,10 +7,13 @@ use crate::{
     scanner::Scanner,
 };
 
+mod action;
+mod clock;
 mod environment;
 mod error;
 mod expr;
 mod interpreter;
+mod lox_function;
 mod parser;
 mod scanner;
 mod stmt;
@@ -35,13 +38,16 @@ fn main() -> Result<()> {
 
 fn run_file(path: &str) -> Result<()> {
     let source = std::fs::read_to_string(path).map_err(Error::Io)?;
-    run(&source)?;
+    let mut interpreter = Interpreter::new();
+    run(&source, &mut interpreter)?;
 
     Ok(())
 }
 
 fn run_prompt() -> Result<()> {
     let mut input = String::new();
+    let mut interpreter = Interpreter::new();
+
     loop {
         print!("> ");
         std::io::stdout().flush().map_err(Error::Io)?;
@@ -50,21 +56,20 @@ fn run_prompt() -> Result<()> {
         if line == 0 {
             break Ok(());
         }
-        if let Err(e) = run(&input) {
+        if let Err(e) = run(&input, &mut interpreter) {
             eprintln!("error: {}", e);
         };
         input.clear();
     }
 }
 
-fn run(source: &str) -> Result<()> {
+fn run(source: &str, interpreter: &mut Interpreter) -> Result<()> {
     let mut scanner = Scanner::new(source);
     scanner.scan_tokens()?;
 
     let mut parser = Parser::new(scanner.tokens);
     let expr = parser.parse();
 
-    let mut interpreter = Interpreter::new();
     if let Ok(expr) = expr {
         interpreter.interpret(&expr)?;
     }
