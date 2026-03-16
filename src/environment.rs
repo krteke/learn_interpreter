@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     error::{Error, Result, RuntimeError},
@@ -8,7 +8,7 @@ use crate::{
 
 #[derive(Default, Clone)]
 pub struct Environment {
-    pub enclosing: Option<Box<Environment>>,
+    pub enclosing: Option<Rc<RefCell<Environment>>>,
     pub values: HashMap<String, Value>,
 }
 
@@ -20,9 +20,9 @@ impl Environment {
         }
     }
 
-    pub fn new_with_enclosing(enclosing: Environment) -> Self {
+    pub fn new_with_enclosing(enclosing: Rc<RefCell<Environment>>) -> Self {
         Self {
-            enclosing: Some(Box::new(enclosing)),
+            enclosing: Some(enclosing),
             values: HashMap::new(),
         }
     }
@@ -39,7 +39,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = &self.enclosing {
-            return enclosing.get(name);
+            return enclosing.borrow().get(name);
         }
 
         Err(Error::Runtime(RuntimeError::new(
@@ -55,7 +55,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = &mut self.enclosing {
-            enclosing.assign(name, value)?;
+            enclosing.borrow_mut().assign(name, value)?;
             return Ok(());
         }
 

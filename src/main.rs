@@ -13,6 +13,7 @@ mod expr;
 mod interpreter;
 mod parser;
 mod scanner;
+mod stmt;
 mod token;
 mod token_type;
 mod value;
@@ -63,9 +64,9 @@ fn run(source: &str) -> Result<()> {
     let mut parser = Parser::new(scanner.tokens);
     let expr = parser.parse();
 
-    let mut interpreter = Interpreter;
+    let mut interpreter = Interpreter::new();
     if let Ok(expr) = expr {
-        interpreter.interpret(expr)?;
+        interpreter.interpret(&expr)?;
     }
 
     Ok(())

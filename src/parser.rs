@@ -1,9 +1,10 @@
 use crate::{
     error::{Error, ParserError, Result},
     expr::{
-        AssignExpr, BinaryExpr, CallExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, StmtExpr,
-        UnaryExpr, Var,
+        AssignExpr, BinaryExpr, CallExpr, Expr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr,
+        Var,
     },
+    stmt::Stmt,
     token::{Literal, Token},
     token_type::TokenType::{self, *},
 };
@@ -18,7 +19,7 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<StmtExpr>> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>> {
         let mut statements = Vec::new();
         while !self.at_end() {
             statements.push(self.declaration().inspect_err(|e| {
@@ -30,7 +31,7 @@ impl Parser {
         Ok(statements)
     }
 
-    fn declaration(&mut self) -> Result<StmtExpr> {
+    fn declaration(&mut self) -> Result<Stmt> {
         let token_type = self.peek().token_type;
 
         match token_type {
@@ -42,7 +43,7 @@ impl Parser {
         }
     }
 
-    fn var_declaration(&mut self) -> Result<StmtExpr> {
+    fn var_declaration(&mut self) -> Result<Stmt> {
         let name = self.consume(Identifier, "Expect variable name.")?;
         let mut init = None;
 
@@ -53,7 +54,7 @@ impl Parser {
 
         self.consume(Semicolon, "Expect ';' after variable declaration.")?;
 
-        Ok(StmtExpr::Var(Var::new(name, init)))
+        Ok(Stmt::Var(Var::new(name, init)))
     }
 
     fn expression(&mut self) -> Result<Expr> {
@@ -100,7 +101,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn statement(&mut self) -> Result<StmtExpr> {
+    fn statement(&mut self) -> Result<Stmt> {
         match self.peek().token_type {
             Print => {
                 self.advance();
@@ -108,7 +109,7 @@ impl Parser {
             }
             LeftBrace => {
                 self.advance();
-                Ok(StmtExpr::Block(self.block()?))
+                Ok(Stmt::Block(self.block()?))
             }
             If => {
                 self.advance();
@@ -126,7 +127,7 @@ impl Parser {
         }
     }
 
-    fn for_statement(&mut self) -> Result<StmtExpr> {
+    fn for_statement(&mut self) -> Result<Stmt> {
         self.consume(LeftParen, "Expect '(' after 'for'.")?;
         let init = match self.peek().token_type {
             Semicolon => {
@@ -158,55 +159,55 @@ impl Parser {
         let mut body = self.statement()?;
 
         if let Some(increment) = increment {
-            body = StmtExpr::Block(vec![body, StmtExpr::Expr(Box::new(increment))]);
+            body = Stmt::Block(vec![body, Stmt::Expr(increment)]);
         }
 
         let condition = condition.unwrap_or(Expr::Literal(LiteralExpr::new(Literal::Bool(true))));
-        body = StmtExpr::While {
-            condition: Box::new(condition),
-            body: Box::new(Expr::Stmt(body)),
+        body = Stmt::While {
+            condition,
+            body: Box::new(body),
         };
 
         if let Some(init) = init {
-            body = StmtExpr::Block(vec![StmtExpr::Expr(Box::new(Expr::Stmt(init))), body]);
+            body = Stmt::Block(vec![init, body]);
         }
 
         Ok(body)
     }
 
-    fn while_statement(&mut self) -> Result<StmtExpr> {
+    fn while_statement(&mut self) -> Result<Stmt> {
         self.consume(LeftParen, "Expect '(' after 'while'.")?;
         let condition = self.expression()?;
         self.consume(RightParen, "Expect ')' after condition.")?;
-        let body = Expr::Stmt(self.statement()?);
+        let body = self.statement()?;
 
-        Ok(StmtExpr::While {
-            condition: Box::new(condition),
+        Ok(Stmt::While {
+            condition,
             body: Box::new(body),
         })
     }
 
-    fn if_statement(&mut self) -> Result<StmtExpr> {
+    fn if_statement(&mut self) -> Result<Stmt> {
         self.consume(LeftParen, "Expect '(' after 'if'.")?;
         let condition = self.expression()?;
         self.consume(RightParen, "Expect ')' after 'if condition.")?;
 
-        let then_branch = Expr::Stmt(self.statement()?);
+        let then_branch = self.statement()?;
         let mut else_branch = None;
 
         if self.peek().token_type == Else {
             self.advance();
-            else_branch = Some(Expr::Stmt(self.statement()?));
+            else_branch = Some(self.statement()?);
         }
 
-        Ok(StmtExpr::If {
-            condition: Box::new(condition),
+        Ok(Stmt::If {
+            condition,
             then_branch: Box::new(then_branch),
             else_branch: else_branch.map(Box::new),
         })
     }
 
-    fn block(&mut self) -> Result<Vec<StmtExpr>> {
+    fn block(&mut self) -> Result<Vec<Stmt>> {
         let mut statements = Vec::new();
 
         while !self.at_end() && self.peek().token_type != RightBrace {
@@ -217,18 +218,18 @@ impl Parser {
         Ok(statements)
     }
 
-    fn print_statement(&mut self) -> Result<StmtExpr> {
+    fn print_statement(&mut self) -> Result<Stmt> {
         let value = self.expression()?;
         self.consume(Semicolon, "Expect ';' after value.")?;
 
-        Ok(StmtExpr::Print(Box::new(value)))
+        Ok(Stmt::Print(value))
     }
 
-    fn expression_statement(&mut self) -> Result<StmtExpr> {
+    fn expression_statement(&mut self) -> Result<Stmt> {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expect ';' after expression.")?;
 
-        Ok(StmtExpr::Expr(Box::new(expr)))
+        Ok(Stmt::Expr(expr))
     }
 
     fn equality(&mut self) -> Result<Expr> {
