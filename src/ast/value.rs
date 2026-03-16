@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{error::Result, interpreter::Interpreter, token::Literal};
+use crate::ast::{error::Result, interpreter::Interpreter, token::Literal};
 
 pub trait Callable: Debug + Display {
     fn arity(&self) -> usize;

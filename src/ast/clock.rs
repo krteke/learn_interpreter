@@ -3,7 +3,11 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::value::{Callable, Value};
+use crate::ast::{
+    error::Result,
+    interpreter::Interpreter,
+    value::{Callable, Value},
+};
 
 #[derive(Debug)]
 pub struct Clock;
@@ -13,11 +17,7 @@ impl Callable for Clock {
         0
     }
 
-    fn call(
-        &self,
-        _interpreter: &mut crate::interpreter::Interpreter,
-        _args: Vec<crate::value::Value>,
-    ) -> crate::error::Result<crate::value::Value> {
+    fn call(&self, _interpreter: &mut Interpreter, _args: Vec<Value>) -> Result<Value> {
         let start = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             // unwrap??

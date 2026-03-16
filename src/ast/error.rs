@@ -1,4 +1,4 @@
-use crate::{token::Token, token_type::TokenType};
+use crate::ast::{token::Token, token_type::TokenType};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

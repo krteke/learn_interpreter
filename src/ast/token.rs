@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use strum_macros::Display;
 
-use crate::token_type::TokenType;
+use crate::ast::token_type::TokenType;
 
 #[derive(Debug, Clone)]
 pub struct Token {

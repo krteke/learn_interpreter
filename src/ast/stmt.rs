@@ -1,4 +1,4 @@
-use crate::{
+use crate::ast::{
     expr::{Expr, Var},
     token::Token,
 };

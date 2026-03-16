@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use crate::{
+use crate::ast::{
     error::{Error, Result, ScanError},
     token::{Literal, Token},
     token_type::TokenType,

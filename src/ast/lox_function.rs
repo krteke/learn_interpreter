@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt::Display, rc::Rc};
 
-use crate::{action::Action, environment::Environment, stmt::FunctionStmt, value::Callable};
+use crate::ast::{action::Action, environment::Environment, stmt::FunctionStmt, value::Callable};
 
 #[derive(Debug)]
 pub struct LoxFunction {
@@ -24,9 +24,9 @@ impl Callable for LoxFunction {
 
     fn call(
         &self,
-        interpreter: &mut crate::interpreter::Interpreter,
-        args: Vec<crate::value::Value>,
-    ) -> crate::error::Result<crate::value::Value> {
+        interpreter: &mut crate::ast::interpreter::Interpreter,
+        args: Vec<crate::ast::value::Value>,
+    ) -> crate::ast::error::Result<crate::ast::value::Value> {
         let mut env = Environment::new_with_enclosing(self.closure.clone());
 
         for (param, arg) in self.declaration.params.iter().zip(args.iter()) {
@@ -39,7 +39,7 @@ impl Callable for LoxFunction {
             return Ok(value);
         }
 
-        Ok(crate::value::Value::Nil)
+        Ok(crate::ast::value::Value::Nil)
     }
 }
 
