@@ -9,10 +9,17 @@
 
 use std::error::Error;
 
+use crate::bytecode::{chunk::Chunk, common::OpCode};
+
 mod ast;
 mod bytecode;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut chunk = Chunk::new();
+    let constant = chunk.add_constant(1.2);
+    chunk.write_chunk(OpCode::Constant as u8);
+    chunk.write_chunk(constant as u8);
+    chunk.write_chunk(OpCode::Return as u8);
     Ok(())
 }
 
