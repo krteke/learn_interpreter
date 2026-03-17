@@ -9,7 +9,7 @@
 
 use std::error::Error;
 
-use crate::bytecode::{chunk::Chunk, common::OpCode};
+use crate::bytecode::{chunk::Chunk, common::OpCode, vm::VM};
 
 mod ast;
 mod bytecode;
