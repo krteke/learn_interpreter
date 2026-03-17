@@ -16,10 +16,9 @@ mod bytecode;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut chunk = Chunk::new();
-    let constant = chunk.add_constant(1.2);
-    chunk.write_chunk(OpCode::Constant as u8);
-    chunk.write_chunk(constant as u8);
-    chunk.write_chunk(OpCode::Return as u8);
+    chunk.write_constant(1.2, 123);
+    chunk.write_chunk(OpCode::Return as u8, 123);
+    chunk.disassemble_chunk("test");
     Ok(())
 }
 
