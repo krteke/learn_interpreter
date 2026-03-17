@@ -14,11 +14,18 @@ use crate::bytecode::{chunk::Chunk, common::OpCode, vm::VM};
 mod ast;
 mod bytecode;
 
+pub const DEBUG: bool = cfg!(feature = "debug_trace_execution");
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut chunk = Chunk::new();
+
     chunk.write_constant(1.2, 123);
+    chunk.write_chunk(OpCode::Negate as u8, 123);
     chunk.write_chunk(OpCode::Return as u8, 123);
     chunk.disassemble_chunk("test");
+
+    let mut vm = VM::new(&chunk);
+    vm.interpret()?;
     Ok(())
 }
 

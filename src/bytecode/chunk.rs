@@ -69,7 +69,7 @@ impl Chunk {
         }
     }
 
-    fn disassemble_instruction(&self, offset: usize) -> usize {
+    pub fn disassemble_instruction(&self, offset: usize) -> usize {
         print!("{:04} ", offset);
 
         if offset > 0 && self.get_line(offset) == self.get_line(offset - 1) {
@@ -83,6 +83,7 @@ impl Chunk {
             OpCode::Constant => self.constant_instruction("Constant", offset),
             OpCode::ConstantLong => self.constant_long_instruction("ConstantLong", offset),
             OpCode::Return => self.simple_instruction("Return", offset),
+            OpCode::Negate => self.simple_instruction("Negate", offset),
         }
     }
 

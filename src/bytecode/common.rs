@@ -2,7 +2,8 @@
 pub enum OpCode {
     Constant = 0,
     ConstantLong = 1,
-    Return = 2,
+    Negate = 2,
+    Return = 3,
 }
 
 impl From<u8> for OpCode {
@@ -10,7 +11,8 @@ impl From<u8> for OpCode {
         match value {
             0 => OpCode::Constant,
             1 => OpCode::ConstantLong,
-            2 => OpCode::Return,
+            2 => OpCode::Negate,
+            3 => OpCode::Return,
             _ => panic!("Unknown opcode {}", value),
         }
     }
