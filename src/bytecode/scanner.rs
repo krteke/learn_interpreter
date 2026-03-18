@@ -12,26 +12,7 @@ pub struct Scanner<'a> {
     pub line: i32,
 }
 
-static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
-    HashMap::from([
-        ("and", TokenType::And),
-        ("class", TokenType::Class),
-        ("else", TokenType::Else),
-        ("false", TokenType::False),
-        ("for", TokenType::For),
-        ("fun", TokenType::Fun),
-        ("if", TokenType::If),
-        ("nil", TokenType::Nil),
-        ("or", TokenType::Or),
-        ("print", TokenType::Print),
-        ("return", TokenType::Return),
-        ("super", TokenType::Super),
-        ("this", TokenType::This),
-        ("true", TokenType::True),
-        ("var", TokenType::Var),
-        ("while", TokenType::While),
-    ])
-});
+static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| HashMap::from([]));
 
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a [u8]) -> Self {
@@ -121,7 +102,7 @@ impl<'a> Scanner<'a> {
         }
 
         let lex = str::from_utf8(&self.source[self.start..self.current]).unwrap();
-        let token_type = *KEYWORDS.get(lex).unwrap_or(&TokenType::Identifier);
+        let token_type = identifier_type(lex);
 
         Ok(Token::new(token_type, lex, self.line, None))
     }
@@ -181,7 +162,7 @@ impl<'a> Scanner<'a> {
             return false;
         }
 
-        self.current += 1;
+        self.advance();
         true
     }
 
@@ -228,4 +209,26 @@ impl<'a> Scanner<'a> {
 
 fn is_alpha(c: u8) -> bool {
     c.is_ascii_alphabetic() || c == b'_' || c >= 128
+}
+
+fn identifier_type(s: &str) -> TokenType {
+    match s {
+        "and" => TokenType::And,
+        "class" => TokenType::Class,
+        "else" => TokenType::Else,
+        "false" => TokenType::False,
+        "for" => TokenType::For,
+        "fun" => TokenType::Fun,
+        "if" => TokenType::If,
+        "nil" => TokenType::Nil,
+        "or" => TokenType::Or,
+        "print" => TokenType::Print,
+        "return" => TokenType::Return,
+        "super" => TokenType::Super,
+        "this" => TokenType::This,
+        "true" => TokenType::True,
+        "var" => TokenType::Var,
+        "while" => TokenType::While,
+        _ => TokenType::Identifier,
+    }
 }
