@@ -3,8 +3,8 @@ use crate::{
     bytecode::{
         chunk::Chunk,
         common::{AsOpCode, OpCode},
-        compile::compile,
         error::Result,
+        scanner::Scanner,
     },
 };
 
@@ -24,9 +24,14 @@ impl VM {
     }
 
     pub fn interpret(&mut self, source: &str) -> Result<()> {
-        compile(source)?;
-        // self.run()
-        Ok(())
+        self.compile(source)?;
+
+        self.run()
+    }
+
+    fn compile(&mut self, source: &str) -> Result<()> {
+        let mut scanner = Scanner::new(source.as_bytes());
+        todo!()
     }
 
     fn push(&mut self, value: f64) {
