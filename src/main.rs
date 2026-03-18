@@ -1,31 +1,56 @@
-// use std::{env, io::Write, process};
+use std::io::Write;
 
-// use crate::ast::{
-//     error::{Error, Result},
-//     interpreter::Interpreter,
-//     parser::Parser,
-//     scanner::Scanner,
-// };
-
-use std::error::Error;
-
-use crate::bytecode::{chunk::Chunk, common::OpCode, vm::VM};
+use crate::bytecode::{
+    chunk::Chunk,
+    common::OpCode,
+    error::{Result, VMError},
+    vm::VM,
+};
 
 mod ast;
 mod bytecode;
 
 pub const DEBUG: bool = cfg!(feature = "debug_trace_execution");
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut chunk = Chunk::new();
+fn main() -> Result<()> {
+    let args = std::env::args().collect::<Vec<_>>();
 
-    chunk.write_constant(1.2, 123);
-    chunk.write_chunk(OpCode::Negate as u8, 123);
-    chunk.write_chunk(OpCode::Return as u8, 123);
-    chunk.disassemble_chunk("test");
+    if args.len() == 1 {
+        repl()?;
+    } else if args.len() == 2 {
+        run_file(&args[1])?;
+    } else {
+        println!("Usage: rlox [path]");
+        std::process::exit(64);
+    }
 
-    let mut vm = VM::new(&chunk);
-    vm.interpret()?;
+    Ok(())
+}
+
+fn repl() -> Result<()> {
+    let mut input = String::new();
+    let chunk = Chunk::new();
+    // let mut interpreter = Interpreter::new();
+
+    loop {
+        print!("> ");
+        std::io::stdout().flush().map_err(VMError::Io)?;
+        std::io::stdin()
+            .read_line(&mut input)
+            .map_err(VMError::Io)?;
+
+        // interpret(input);
+        // if let Err(e) = run(&input, &mut interpreter) {
+        //     eprintln!("error: {}", e);
+        // };
+        input.clear();
+    }
+}
+
+fn run_file(path: &str) -> Result<()> {
+    let source = std::fs::read_to_string(path).map_err(VMError::Io)?;
+    // interpret(&source);
+
     Ok(())
 }
 

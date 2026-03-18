@@ -1,4 +1,7 @@
-use crate::bytecode::{common::OpCode, value::ValueArray};
+use crate::bytecode::{
+    common::{AsOpCode, OpCode},
+    value::ValueArray,
+};
 
 pub struct Chunk {
     pub code: Vec<u8>,
@@ -78,12 +81,16 @@ impl Chunk {
             print!("{:4} ", self.get_line(offset));
         }
 
-        let instruction = self.code[offset].into();
+        let instruction = self.code[offset].as_opcode();
         match instruction {
             OpCode::Constant => self.constant_instruction("Constant", offset),
             OpCode::ConstantLong => self.constant_long_instruction("ConstantLong", offset),
-            OpCode::Return => self.simple_instruction("Return", offset),
+            OpCode::Add => self.simple_instruction("Add", offset),
+            OpCode::Subtract => self.simple_instruction("Subtract", offset),
+            OpCode::Multiply => self.simple_instruction("Multiply", offset),
+            OpCode::Divide => self.simple_instruction("Divide", offset),
             OpCode::Negate => self.simple_instruction("Negate", offset),
+            OpCode::Return => self.simple_instruction("Return", offset),
         }
     }
 

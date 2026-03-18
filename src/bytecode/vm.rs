@@ -1,16 +1,21 @@
 use crate::{
     DEBUG,
-    bytecode::{chunk::Chunk, common::OpCode, error::Result},
+    bytecode::{
+        chunk::Chunk,
+        common::{AsOpCode, OpCode},
+        compile::compile,
+        error::Result,
+    },
 };
 
-pub struct VM<'a> {
-    pub chunk: &'a Chunk,
+pub struct VM {
+    pub chunk: Chunk,
     pub ip: usize,
     pub stack: Vec<f64>,
 }
 
-impl<'a> VM<'a> {
-    pub fn new(chunk: &'a Chunk) -> Self {
+impl VM {
+    pub fn new(chunk: Chunk) -> Self {
         Self {
             chunk,
             ip: 0,
@@ -18,11 +23,10 @@ impl<'a> VM<'a> {
         }
     }
 
-    pub fn interpret(&mut self) -> Result<()> {
-        // self.chunk = chunk;
-        // self.ip = 0;
-
-        self.run()
+    pub fn interpret(&mut self, source: &str) -> Result<()> {
+        compile(source)?;
+        // self.run()
+        Ok(())
     }
 
     fn push(&mut self, value: f64) {
@@ -45,9 +49,9 @@ impl<'a> VM<'a> {
                 self.chunk.disassemble_instruction(self.ip);
             }
 
-            let instruction = self.read_byte();
+            let instruction = self.read_byte().as_opcode();
 
-            match instruction.into() {
+            match instruction {
                 OpCode::Constant => {
                     let constant = self.read_constant();
                     self.push(constant);
@@ -56,6 +60,9 @@ impl<'a> VM<'a> {
                     let constant = self.read_constant_long();
                     self.push(constant);
                 }
+                OpCode::Add | OpCode::Subtract | OpCode::Multiply | OpCode::Divide => {
+                    self.binary_op(instruction)
+                }
                 OpCode::Return => {
                     let result = self.pop();
                     println!("{}", result);
@@ -63,8 +70,12 @@ impl<'a> VM<'a> {
                     return Ok(());
                 }
                 OpCode::Negate => {
-                    let value = self.pop();
-                    self.push(-value);
+                    // let value = self.pop();
+                    // self.push(-value);
+                    let value = self.stack.last_mut();
+                    if let Some(v) = value {
+                        *v = -*v;
+                    }
                 }
             }
         }
@@ -76,7 +87,22 @@ impl<'a> VM<'a> {
     }
 
     fn read_constant(&mut self) -> f64 {
-        self.chunk.constants.values[self.read_byte() as usize]
+        let index = self.read_byte() as usize;
+
+        self.chunk.constants.values[index]
+    }
+
+    fn binary_op(&mut self, op: OpCode) {
+        let b = self.pop();
+        let a = self.pop();
+
+        match op {
+            OpCode::Add => self.push(a + b),
+            OpCode::Subtract => self.push(a - b),
+            OpCode::Multiply => self.push(a * b),
+            OpCode::Divide => self.push(a / b),
+            _ => unreachable!(),
+        }
     }
 
     fn read_constant_long(&mut self) -> f64 {
