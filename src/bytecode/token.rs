@@ -1,9 +1,11 @@
+use std::borrow::Cow;
+
 use strum_macros::Display;
 
 #[derive(Debug)]
 pub struct Token<'a> {
     pub token_type: TokenType,
-    pub lex: &'a str,
+    pub lex: Cow<'a, str>,
     pub line: i32,
     pub literal: Option<Literal>,
 }
@@ -12,7 +14,7 @@ impl<'a> Token<'a> {
     pub fn new(token_type: TokenType, lex: &'a str, line: i32, literal: Option<Literal>) -> Self {
         Self {
             token_type,
-            lex,
+            lex: Cow::Borrowed(lex),
             line,
             literal,
         }
@@ -27,7 +29,7 @@ pub enum Literal {
     Nil,
 }
 
-#[derive(Display, Debug, Clone, Copy)]
+#[derive(Display, Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,

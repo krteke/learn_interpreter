@@ -1,7 +1,5 @@
-use std::{collections::HashMap, sync::LazyLock};
-
 use crate::bytecode::{
-    error::{Result, ScanError, VMError},
+    error::{Error, Result, ScanError},
     token::{Literal, Token, TokenType},
 };
 
@@ -11,8 +9,6 @@ pub struct Scanner<'a> {
     pub current: usize,
     pub line: i32,
 }
-
-static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| HashMap::from([]));
 
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a [u8]) -> Self {
@@ -83,7 +79,7 @@ impl<'a> Scanner<'a> {
                 } else if is_alpha(c) {
                     return self.identifier();
                 } else {
-                    return Err(VMError::Scan(ScanError::new(
+                    return Err(Error::Scan(ScanError::new(
                         "Unexpected character".to_string(),
                         self.line as usize,
                     )));
@@ -116,7 +112,7 @@ impl<'a> Scanner<'a> {
         }
 
         if self.at_end() {
-            return Err(VMError::Scan(ScanError::new(
+            return Err(Error::Scan(ScanError::new(
                 "Unterminated string".to_string(),
                 self.line as usize,
             )));

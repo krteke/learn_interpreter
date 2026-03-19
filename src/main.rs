@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::bytecode::{
     chunk::Chunk,
     common::OpCode,
-    error::{Result, VMError},
+    error::{Error, Result},
     vm::VM,
 };
 
@@ -34,10 +34,8 @@ fn repl() -> Result<()> {
 
     loop {
         print!("> ");
-        std::io::stdout().flush().map_err(VMError::Io)?;
-        std::io::stdin()
-            .read_line(&mut input)
-            .map_err(VMError::Io)?;
+        std::io::stdout().flush().map_err(Error::Io)?;
+        std::io::stdin().read_line(&mut input).map_err(Error::Io)?;
 
         // interpret(input);
         // if let Err(e) = run(&input, &mut interpreter) {
@@ -48,7 +46,7 @@ fn repl() -> Result<()> {
 }
 
 fn run_file(path: &str) -> Result<()> {
-    let source = std::fs::read_to_string(path).map_err(VMError::Io)?;
+    let source = std::fs::read_to_string(path).map_err(Error::Io)?;
     // interpret(&source);
 
     Ok(())
