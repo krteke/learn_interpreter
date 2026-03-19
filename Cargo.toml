@@ -9,6 +9,7 @@ strum_macros = "0.28.0"
 
 [features]
 debug_trace_execution = []
+debug_print_code = []
 
 [profile.release]
 opt-level = 3

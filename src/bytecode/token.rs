@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use strum_macros::Display;
 
+use crate::bytecode::compile::{Compiler, ParseFn, ParseRule, Precedence};
+
 #[derive(Debug)]
 pub struct Token<'a> {
     pub token_type: TokenType,
@@ -78,4 +80,38 @@ pub enum TokenType {
     While,
 
     EOF,
+}
+
+impl<'a> TokenType {
+    pub fn prefix_rule(&self) -> Option<ParseFn<'a>> {
+        match self {
+            Self::LeftParen => Some(Compiler::grouping),
+            Self::Minus => Some(Compiler::unary),
+            Self::Number => Some(Compiler::number),
+            _ => None,
+        }
+    }
+
+    pub fn infix_rule(&self) -> Option<ParseFn<'a>> {
+        match self {
+            Self::Minus | Self::Plus | Self::Star | Self::Slash => Some(Compiler::binary),
+            _ => None,
+        }
+    }
+
+    pub fn precedence(&self) -> Precedence {
+        match self {
+            Self::Minus | Self::Plus => Precedence::Term,
+            Self::Star | Self::Slash => Precedence::Factor,
+            _ => Precedence::None,
+        }
+    }
+
+    pub fn rule(&self) -> ParseRule<'a> {
+        ParseRule {
+            prefix: self.prefix_rule(),
+            infix: self.infix_rule(),
+            precedence: self.precedence(),
+        }
+    }
 }

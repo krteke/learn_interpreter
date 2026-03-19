@@ -11,6 +11,7 @@ mod ast;
 mod bytecode;
 
 pub const DEBUG: bool = cfg!(feature = "debug_trace_execution");
+pub const PRINT_CODE: bool = cfg!(feature = "debug_print_code");
 
 fn main() -> Result<()> {
     let args = std::env::args().collect::<Vec<_>>();

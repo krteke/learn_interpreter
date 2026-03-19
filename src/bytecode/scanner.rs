@@ -21,8 +21,8 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn scan_token(&mut self) -> Result<Token<'a>> {
-        self.start = self.current;
         self.skip_whitespace();
+        self.start = self.current;
 
         if self.at_end() {
             return Ok(Token::new(TokenType::EOF, "", self.line, None));
@@ -93,7 +93,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) -> Result<Token<'a>> {
-        while is_alpha(self.peek()) {
+        while self.peek().is_some_and(is_alpha) {
             self.advance();
         }
 
@@ -104,7 +104,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn string(&mut self) -> Result<Token<'a>> {
-        while self.peek() != b'"' {
+        while self.peek().is_some_and(|t| t != b'"') {
             if self.source[self.current] == b'\n' {
                 self.line += 1;
             }
@@ -128,7 +128,9 @@ impl<'a> Scanner<'a> {
     fn number(&mut self) -> Result<Token<'a>> {
         self.consume_number();
 
-        if self.peek() == b'.' && self.peek_next().is_some_and(|n| n.is_ascii_digit()) {
+        if self.peek().is_some_and(|t| t == b'.')
+            && self.peek_next().is_some_and(|n| n.is_ascii_digit())
+        {
             self.advance();
             self.consume_number();
         }
@@ -140,7 +142,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn consume_number(&mut self) {
-        while self.peek().is_ascii_digit() {
+        while self.peek().is_some_and(|t| t.is_ascii_digit()) {
             self.advance();
         }
     }
@@ -150,11 +152,11 @@ impl<'a> Scanner<'a> {
     }
 
     fn match_byte(&mut self, c: u8) -> bool {
-        if self.at_end() {
-            return false;
-        }
+        // if self.at_end() {
+        //     return false;
+        // }
 
-        if self.peek() != c {
+        if self.peek() != Some(c) {
             return false;
         }
 
@@ -166,16 +168,16 @@ impl<'a> Scanner<'a> {
         loop {
             let c = self.peek();
             match c {
-                b' ' | b'\r' | b'\t' => {
+                Some(b' ' | b'\r' | b'\t') => {
                     self.advance();
                 }
-                b'\n' => {
+                Some(b'\n') => {
                     self.line += 1;
                     self.advance();
                 }
-                b'/' => {
+                Some(b'/') => {
                     if self.peek_next().is_some_and(|n| n == b'/') {
-                        while self.peek() != b'\n' && !self.at_end() {
+                        while self.peek().is_some_and(|t| t != b'\n') {
                             self.advance();
                         }
                     } else {
@@ -193,8 +195,8 @@ impl<'a> Scanner<'a> {
         self.current >= self.source.len()
     }
 
-    fn peek(&self) -> u8 {
-        self.source[self.current]
+    fn peek(&self) -> Option<u8> {
+        (!self.at_end()).then(|| self.source[self.current])
     }
 
     fn advance(&mut self) -> u8 {
