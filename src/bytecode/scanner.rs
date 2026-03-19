@@ -93,7 +93,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) -> Result<Token<'a>> {
-        while self.peek().is_some_and(is_alpha) {
+        while self.peek().is_some_and(is_alpha_numeric) {
             self.advance();
         }
 
@@ -207,6 +207,10 @@ impl<'a> Scanner<'a> {
 
 fn is_alpha(c: u8) -> bool {
     c.is_ascii_alphabetic() || c == b'_' || c >= 128
+}
+
+fn is_alpha_numeric(c: u8) -> bool {
+    c.is_ascii_alphanumeric() || c == b'_' || c >= 128
 }
 
 fn identifier_type(s: &str) -> TokenType {

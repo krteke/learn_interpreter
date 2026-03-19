@@ -166,9 +166,7 @@ impl<'a> Compiler<'a> {
 
         prefix_rule(self)?;
 
-        let current = self.parser.current.token_type;
-
-        while precedence <= current.precedence() {
+        while precedence <= self.parser.current.token_type.precedence() {
             self.advance()?;
 
             let infix_rule = self.parser.previous.token_type.infix_rule();
