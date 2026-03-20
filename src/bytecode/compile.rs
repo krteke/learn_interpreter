@@ -8,13 +8,14 @@ use crate::{
         error::{Error, ParserError, Result},
         scanner::Scanner,
         token::{Literal, Token, TokenType},
+        value::Value,
     },
 };
 
 pub struct Compiler<'a> {
-    parser: Parser<'a>,
-    scanner: Scanner<'a>,
-    chunk: Chunk,
+    pub parser: Parser<'a>,
+    pub scanner: Scanner<'a>,
+    pub chunk: Chunk,
 }
 
 pub struct Parser<'a> {
@@ -108,6 +109,12 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(precedence.next())?;
 
         match op_type {
+            TokenType::BangEqual => self.emit_bytes(OpCode::Equal as u8, OpCode::Not as u8),
+            TokenType::EqualEqual => self.emit_byte(OpCode::Equal as u8),
+            TokenType::Greater => self.emit_byte(OpCode::Greater as u8),
+            TokenType::GreaterEqual => self.emit_bytes(OpCode::Less as u8, OpCode::Not as u8),
+            TokenType::Less => self.emit_byte(OpCode::Less as u8),
+            TokenType::LessEqual => self.emit_bytes(OpCode::Greater as u8, OpCode::Not as u8),
             TokenType::Plus => self.emit_byte(OpCode::Add as u8),
             TokenType::Minus => self.emit_byte(OpCode::Subtract as u8),
             TokenType::Star => self.emit_byte(OpCode::Multiply as u8),
@@ -125,8 +132,8 @@ impl<'a> Compiler<'a> {
 
     pub fn number(&mut self) -> Result<()> {
         let literal = self.parser.previous.literal.as_ref();
-        if let Some(Literal::Number(value)) = literal {
-            self.emit_constant(*value);
+        if let Some(value) = literal {
+            self.emit_constant(value.into());
         }
         Ok(())
     }
@@ -145,8 +152,23 @@ impl<'a> Compiler<'a> {
                 self.emit_byte(OpCode::Negate as u8);
                 Ok(())
             }
+            TokenType::Bang => {
+                self.emit_byte(OpCode::Not as u8);
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    pub fn literal(&mut self) -> Result<()> {
+        match self.parser.previous.token_type {
+            TokenType::False => self.emit_byte(OpCode::False as u8),
+            TokenType::Nil => self.emit_byte(OpCode::Nil as u8),
+            TokenType::True => self.emit_byte(OpCode::True as u8),
+            _ => unreachable!(),
+        }
+
+        Ok(())
     }
 
     fn expression(&mut self) -> Result<()> {
@@ -178,7 +200,7 @@ impl<'a> Compiler<'a> {
         Ok(())
     }
 
-    fn emit_constant(&mut self, value: f64) {
+    fn emit_constant(&mut self, value: Value) {
         self.chunk
             .write_constant(value, self.parser.previous.line as usize);
     }

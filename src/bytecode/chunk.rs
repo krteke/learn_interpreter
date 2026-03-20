@@ -1,6 +1,6 @@
 use crate::bytecode::{
     common::{AsOpCode, OpCode},
-    value::ValueArray,
+    value::{Value, ValueArray},
 };
 
 pub struct Chunk {
@@ -43,7 +43,7 @@ impl Chunk {
         panic!("offset out of bounds: {}", offset);
     }
 
-    pub fn write_constant(&mut self, value: f64, line: usize) {
+    pub fn write_constant(&mut self, value: Value, line: usize) {
         let index = self.add_constant(value);
 
         if index < 256 {
@@ -58,7 +58,7 @@ impl Chunk {
         }
     }
 
-    fn add_constant(&mut self, value: f64) -> usize {
+    fn add_constant(&mut self, value: Value) -> usize {
         self.constants.values.push(value);
         self.constants.values.len() - 1
     }
@@ -85,10 +85,17 @@ impl Chunk {
         match instruction {
             OpCode::Constant => self.constant_instruction("Constant", offset),
             OpCode::ConstantLong => self.constant_long_instruction("ConstantLong", offset),
+            OpCode::Nil => self.simple_instruction("Nil", offset),
+            OpCode::True => self.simple_instruction("True", offset),
+            OpCode::False => self.simple_instruction("False", offset),
+            OpCode::Equal => self.simple_instruction("Equal", offset),
+            OpCode::Greater => self.simple_instruction("Greater", offset),
+            OpCode::Less => self.simple_instruction("Less", offset),
             OpCode::Add => self.simple_instruction("Add", offset),
             OpCode::Subtract => self.simple_instruction("Subtract", offset),
             OpCode::Multiply => self.simple_instruction("Multiply", offset),
             OpCode::Divide => self.simple_instruction("Divide", offset),
+            OpCode::Not => self.simple_instruction("Not", offset),
             OpCode::Negate => self.simple_instruction("Negate", offset),
             OpCode::Return => self.simple_instruction("Return", offset),
         }

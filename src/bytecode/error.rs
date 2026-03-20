@@ -5,8 +5,8 @@ use crate::bytecode::token::{Token, TokenType};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     Scan(ScanError),
-    Interpret(InterpretError),
     Parser(ParserError),
+    Runtime(RuntimeError),
     #[error(transparent)]
     Io(std::io::Error),
 }
@@ -15,17 +15,11 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Scan(e) => write!(f, "ScanError: {} at line {}", e.message, e.line),
-            Error::Interpret(e) => todo!(),
+            Error::Runtime(e) => todo!(),
             Error::Parser(e) => write!(f, "ParserError: {} at line {}", e.message, e.line),
             Error::Io(e) => write!(f, "IoError: {}", e),
         }
     }
-}
-
-#[derive(Debug)]
-pub enum InterpretError {
-    Compile(String),
-    Runtime(String),
 }
 
 #[derive(Debug)]
@@ -35,8 +29,11 @@ pub struct ScanError {
 }
 
 impl ScanError {
-    pub fn new(message: String, line: usize) -> Self {
-        Self { message, line }
+    pub fn new(message: &str, line: usize) -> Self {
+        Self {
+            message: message.to_string(),
+            line,
+        }
     }
 }
 
@@ -54,6 +51,21 @@ impl ParserError {
             lexeme: token.lex.to_string(),
             token_type: token.token_type,
             line: token.line as usize,
+            message: message.to_string(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct RuntimeError {
+    pub line: usize,
+    pub message: String,
+}
+
+impl RuntimeError {
+    pub fn new(line: usize, message: &str) -> Self {
+        Self {
+            line,
             message: message.to_string(),
         }
     }

@@ -30,18 +30,16 @@ fn main() -> Result<()> {
 
 fn repl() -> Result<()> {
     let mut input = String::new();
-    let chunk = Chunk::new();
-    // let mut interpreter = Interpreter::new();
+    let mut vm = VM::new();
 
     loop {
         print!("> ");
         std::io::stdout().flush().map_err(Error::Io)?;
         std::io::stdin().read_line(&mut input).map_err(Error::Io)?;
 
-        // interpret(input);
-        // if let Err(e) = run(&input, &mut interpreter) {
-        //     eprintln!("error: {}", e);
-        // };
+        if let Err(e) = vm.interpret(&input) {
+            eprintln!("error: {}", e);
+        }
         input.clear();
     }
 }

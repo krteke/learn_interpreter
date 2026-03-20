@@ -86,15 +86,25 @@ impl<'a> TokenType {
     pub fn prefix_rule(&self) -> Option<ParseFn<'a>> {
         match self {
             Self::LeftParen => Some(Compiler::grouping),
-            Self::Minus => Some(Compiler::unary),
+            Self::Minus | Self::Bang => Some(Compiler::unary),
             Self::Number => Some(Compiler::number),
+            Self::False | Self::True | Self::Nil => Some(Compiler::literal),
             _ => None,
         }
     }
 
     pub fn infix_rule(&self) -> Option<ParseFn<'a>> {
         match self {
-            Self::Minus | Self::Plus | Self::Star | Self::Slash => Some(Compiler::binary),
+            Self::Minus
+            | Self::Plus
+            | Self::Star
+            | Self::Slash
+            | Self::BangEqual
+            | Self::EqualEqual
+            | Self::Greater
+            | Self::GreaterEqual
+            | Self::Less
+            | Self::LessEqual => Some(Compiler::binary),
             _ => None,
         }
     }
@@ -103,6 +113,10 @@ impl<'a> TokenType {
         match self {
             Self::Minus | Self::Plus => Precedence::Term,
             Self::Star | Self::Slash => Precedence::Factor,
+            Self::BangEqual | Self::EqualEqual => Precedence::Equality,
+            Self::Greater | Self::GreaterEqual | Self::Less | Self::LessEqual => {
+                Precedence::Comparison
+            }
             _ => Precedence::None,
         }
     }

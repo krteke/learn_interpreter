@@ -80,7 +80,7 @@ impl<'a> Scanner<'a> {
                     return self.identifier();
                 } else {
                     return Err(Error::Scan(ScanError::new(
-                        "Unexpected character".to_string(),
+                        "Unexpected character",
                         self.line as usize,
                     )));
                 }
@@ -113,7 +113,7 @@ impl<'a> Scanner<'a> {
 
         if self.at_end() {
             return Err(Error::Scan(ScanError::new(
-                "Unterminated string".to_string(),
+                "Unterminated string",
                 self.line as usize,
             )));
         }
