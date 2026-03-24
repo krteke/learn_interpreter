@@ -8,14 +8,15 @@ use crate::{
         error::{Error, ParserError, Result},
         scanner::Scanner,
         token::{Literal, Token, TokenType},
-        value::Value,
+        value::{Obj, StringInterner, Value},
     },
 };
 
-pub struct Compiler<'a> {
+pub struct Compiler<'a, 'i> {
     pub parser: Parser<'a>,
     pub scanner: Scanner<'a>,
     pub chunk: Chunk,
+    pub strings: &'i mut StringInterner,
 }
 
 pub struct Parser<'a> {
@@ -56,11 +57,11 @@ impl Precedence {
     }
 }
 
-pub type ParseFn<'a> = fn(&mut Compiler<'a>) -> Result<()>;
+pub type ParseFn<'a, 'i> = fn(&mut Compiler<'a, 'i>) -> Result<()>;
 
-pub struct ParseRule<'a> {
-    pub prefix: Option<ParseFn<'a>>,
-    pub infix: Option<ParseFn<'a>>,
+pub struct ParseRule<'a, 'i> {
+    pub prefix: Option<ParseFn<'a, 'i>>,
+    pub infix: Option<ParseFn<'a, 'i>>,
     pub precedence: Precedence,
 }
 
@@ -73,8 +74,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-impl<'a> Compiler<'a> {
-    pub fn new(source: &'a str) -> Self {
+impl<'a, 'i> Compiler<'a, 'i> {
+    pub fn new(source: &'a str, strings: &'i mut StringInterner) -> Self {
         let parser = Parser::new();
         let scanner = Scanner::new(source.as_bytes());
         let chunk = Chunk::new();
@@ -83,6 +84,7 @@ impl<'a> Compiler<'a> {
             parser,
             scanner,
             chunk,
+            strings,
         }
     }
 
@@ -136,6 +138,19 @@ impl<'a> Compiler<'a> {
             self.emit_constant(value.into());
         }
         Ok(())
+    }
+
+    pub fn string(&mut self) -> Result<()> {
+        if let Some(Literal::String(s)) = &self.parser.previous.literal {
+            let interned = self.strings.intern(s);
+            self.emit_constant(Value::Obj(Obj::String(interned)));
+            Ok(())
+        } else {
+            Err(Error::Parser(ParserError::new(
+                &self.parser.previous,
+                "Expect string literal",
+            )))
+        }
     }
 
     fn current_chunk(&mut self) -> &mut Chunk {

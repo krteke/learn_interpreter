@@ -5,13 +5,14 @@ use crate::{
         common::{AsOpCode, OpCode},
         compile::Compiler,
         error::{Error, Result, RuntimeError},
-        value::Value,
+        value::{Obj, StringInterner, Value},
     },
 };
 
 pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,
+    pub strings: StringInterner,
     pub stack: Vec<Value>,
 }
 
@@ -20,12 +21,13 @@ impl VM {
         Self {
             chunk: Chunk::new(),
             ip: 0,
+            strings: StringInterner::new(),
             stack: Vec::new(),
         }
     }
 
     pub fn interpret(&mut self, source: &str) -> Result<()> {
-        let mut compiler = Compiler::new(source);
+        let mut compiler = Compiler::new(source, &mut self.strings);
         compiler.compile()?;
         self.chunk = compiler.chunk;
 
@@ -72,12 +74,40 @@ impl VM {
 
                     self.push(Value::Bool(a == b));
                 }
-                OpCode::Add
-                | OpCode::Subtract
+                OpCode::Add => {
+                    let len = self.stack.len();
+
+                    match (&self.stack[len - 1], &self.stack[len - 2]) {
+                        (Value::Number(_), Value::Number(_)) | (Value::Obj(_), Value::Obj(_)) => {}
+                        _ => {
+                            return Err(Error::Runtime(RuntimeError::new(
+                                self.ip,
+                                "Operands must be two numbers or two strings.",
+                            )));
+                        }
+                    }
+
+                    self.binary_op(instruction)?;
+                }
+                OpCode::Subtract
                 | OpCode::Multiply
                 | OpCode::Divide
                 | OpCode::Greater
-                | OpCode::Less => self.binary_op(instruction)?,
+                | OpCode::Less => {
+                    let len = self.stack.len();
+
+                    match (&self.stack[len - 1], &self.stack[len - 2]) {
+                        (Value::Number(_), Value::Number(_)) => {}
+                        _ => {
+                            return Err(Error::Runtime(RuntimeError::new(
+                                self.ip,
+                                "Operands must be numbers.",
+                            )));
+                        }
+                    }
+
+                    self.binary_op(instruction)?;
+                }
                 OpCode::Not => {
                     let value = self.pop();
                     self.push(!value);
@@ -115,23 +145,22 @@ impl VM {
     }
 
     fn binary_op(&mut self, op: OpCode) -> Result<()> {
-        let len = self.stack.len();
-
-        match (&self.stack[len - 1], &self.stack[len - 2]) {
-            (Value::Number(_), Value::Number(_)) => {}
-            _ => {
-                return Err(Error::Runtime(RuntimeError::new(
-                    self.ip,
-                    "Operands must be numbers.",
-                )));
-            }
-        }
-
         let b = self.pop();
         let a = self.pop();
 
         match op {
-            OpCode::Add => self.push(a + b),
+            OpCode::Add => match (&a, &b) {
+                (Value::Obj(a), Value::Obj(b)) => {
+                    let (Obj::String(a), Obj::String(b)) = (a, b);
+                    let mut value = Vec::with_capacity(a.len() + b.len());
+                    value.extend_from_slice(a.as_bytes());
+                    value.extend_from_slice(b.as_bytes());
+
+                    let str = self.strings.intern(&String::from_utf8(value).unwrap());
+                    self.push(Value::Obj(Obj::String(str)));
+                }
+                _ => self.push(a + b),
+            },
             OpCode::Subtract => self.push(a - b),
             OpCode::Multiply => self.push(a * b),
             OpCode::Divide => self.push(a / b),

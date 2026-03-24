@@ -1,8 +1,6 @@
 use std::io::Write;
 
 use crate::bytecode::{
-    chunk::Chunk,
-    common::OpCode,
     error::{Error, Result},
     vm::VM,
 };

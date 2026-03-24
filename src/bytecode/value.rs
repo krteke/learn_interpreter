@@ -1,6 +1,8 @@
 use std::{
+    collections::HashSet,
     fmt::Display,
     ops::{Add, Div, Mul, Not, Sub},
+    rc::Rc,
 };
 
 use crate::bytecode::token::Literal;
@@ -17,17 +19,44 @@ impl ValueArray {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    String(String),
     Number(f64),
     Bool(bool),
     Nil,
+    Obj(Obj),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Obj {
+    String(Rc<str>),
+}
+
+pub struct StringInterner {
+    strings: HashSet<Rc<str>>,
+}
+
+impl StringInterner {
+    pub fn new() -> Self {
+        Self {
+            strings: HashSet::new(),
+        }
+    }
+
+    pub fn intern(&mut self, s: &str) -> Rc<str> {
+        if let Some(existing) = self.strings.get(s) {
+            return existing.clone();
+        }
+
+        let interned: Rc<str> = Rc::from(s);
+        self.strings.insert(interned.clone());
+        interned
+    }
 }
 
 impl From<&Literal> for Value {
     fn from(value: &Literal) -> Self {
         match value {
             Literal::Number(value) => Self::Number(*value),
-            Literal::String(value) => Self::String(value.clone()),
+            Literal::String(value) => Self::Obj(Obj::String(Rc::from(value.as_str()))),
             Literal::Bool(value) => Self::Bool(*value),
             Literal::Nil => Self::Nil,
         }
@@ -37,10 +66,10 @@ impl From<&Literal> for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::String(value) => write!(f, "{}", value),
             Value::Number(value) => write!(f, "{}", value),
             Value::Bool(value) => write!(f, "{}", value),
             Value::Nil => write!(f, "nil"),
+            Value::Obj(obj) => write!(f, "{:?}", obj),
         }
     }
 }
@@ -51,6 +80,7 @@ impl PartialEq for Value {
             (Value::Number(a), Value::Number(b)) => a == b,
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::Nil, Value::Nil) => true,
+            (Value::Obj(a), Value::Obj(b)) => a == b,
             _ => false,
         }
     }

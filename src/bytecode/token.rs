@@ -82,18 +82,19 @@ pub enum TokenType {
     EOF,
 }
 
-impl<'a> TokenType {
-    pub fn prefix_rule(&self) -> Option<ParseFn<'a>> {
+impl<'a, 'i> TokenType {
+    pub fn prefix_rule(&self) -> Option<ParseFn<'a, 'i>> {
         match self {
             Self::LeftParen => Some(Compiler::grouping),
             Self::Minus | Self::Bang => Some(Compiler::unary),
             Self::Number => Some(Compiler::number),
             Self::False | Self::True | Self::Nil => Some(Compiler::literal),
+            Self::String => Some(Compiler::string),
             _ => None,
         }
     }
 
-    pub fn infix_rule(&self) -> Option<ParseFn<'a>> {
+    pub fn infix_rule(&self) -> Option<ParseFn<'a, 'i>> {
         match self {
             Self::Minus
             | Self::Plus
@@ -121,7 +122,7 @@ impl<'a> TokenType {
         }
     }
 
-    pub fn rule(&self) -> ParseRule<'a> {
+    pub fn rule(&self) -> ParseRule<'a, 'i> {
         ParseRule {
             prefix: self.prefix_rule(),
             infix: self.infix_rule(),
