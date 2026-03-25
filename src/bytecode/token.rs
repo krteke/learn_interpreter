@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use strum_macros::Display;
 
-use crate::bytecode::compile::{Compiler, ParseFn, ParseRule, Precedence};
+use crate::bytecode::compile::{Compiler, ParseFn, Precedence};
 
 #[derive(Debug)]
 pub struct Token<'a> {
@@ -90,6 +90,7 @@ impl<'a, 'i> TokenType {
             Self::Number => Some(Compiler::number),
             Self::False | Self::True | Self::Nil => Some(Compiler::literal),
             Self::String => Some(Compiler::string),
+            Self::Identifier => Some(Compiler::variable),
             _ => None,
         }
     }
@@ -122,11 +123,11 @@ impl<'a, 'i> TokenType {
         }
     }
 
-    pub fn rule(&self) -> ParseRule<'a, 'i> {
-        ParseRule {
-            prefix: self.prefix_rule(),
-            infix: self.infix_rule(),
-            precedence: self.precedence(),
-        }
-    }
+    // pub fn rule(&self) -> ParseRule<'a, 'i> {
+    //     ParseRule {
+    //         prefix: self.prefix_rule(),
+    //         infix: self.infix_rule(),
+    //         precedence: self.precedence(),
+    //     }
+    // }
 }

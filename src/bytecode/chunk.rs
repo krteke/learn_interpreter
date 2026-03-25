@@ -58,7 +58,7 @@ impl Chunk {
         }
     }
 
-    fn add_constant(&mut self, value: Value) -> usize {
+    pub fn add_constant(&mut self, value: Value) -> usize {
         self.constants.values.push(value);
         self.constants.values.len() - 1
     }
@@ -88,6 +88,10 @@ impl Chunk {
             OpCode::Nil => self.simple_instruction("Nil", offset),
             OpCode::True => self.simple_instruction("True", offset),
             OpCode::False => self.simple_instruction("False", offset),
+            OpCode::Pop => self.simple_instruction("Pop", offset),
+            OpCode::GetGlobal => self.simple_instruction("GetGlobal", offset),
+            OpCode::DefineGlobal => self.simple_instruction("DefineGlobal", offset),
+            OpCode::SetGlobal => self.simple_instruction("SetGlobal", offset),
             OpCode::Equal => self.simple_instruction("Equal", offset),
             OpCode::Greater => self.simple_instruction("Greater", offset),
             OpCode::Less => self.simple_instruction("Less", offset),
@@ -97,6 +101,7 @@ impl Chunk {
             OpCode::Divide => self.simple_instruction("Divide", offset),
             OpCode::Not => self.simple_instruction("Not", offset),
             OpCode::Negate => self.simple_instruction("Negate", offset),
+            OpCode::Print => self.simple_instruction("Print", offset),
             OpCode::Return => self.simple_instruction("Return", offset),
         }
     }

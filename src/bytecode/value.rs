@@ -69,7 +69,9 @@ impl Display for Value {
             Value::Number(value) => write!(f, "{}", value),
             Value::Bool(value) => write!(f, "{}", value),
             Value::Nil => write!(f, "nil"),
-            Value::Obj(obj) => write!(f, "{:?}", obj),
+            Value::Obj(obj) => match obj {
+                Obj::String(s) => write!(f, "{}", s),
+            },
         }
     }
 }

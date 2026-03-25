@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     DEBUG,
     bytecode::{
@@ -13,6 +15,7 @@ pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,
     pub strings: StringInterner,
+    pub globals: HashMap<String, Value>,
     pub stack: Vec<Value>,
 }
 
@@ -22,6 +25,7 @@ impl VM {
             chunk: Chunk::new(),
             ip: 0,
             strings: StringInterner::new(),
+            globals: HashMap::new(),
             stack: Vec::new(),
         }
     }
@@ -29,7 +33,10 @@ impl VM {
     pub fn interpret(&mut self, source: &str) -> Result<()> {
         let mut compiler = Compiler::new(source, &mut self.strings);
         compiler.compile()?;
+
         self.chunk = compiler.chunk;
+        self.ip = 0;
+        self.stack.clear();
 
         self.run()
     }
@@ -68,6 +75,52 @@ impl VM {
                 OpCode::Nil => self.push(Value::Nil),
                 OpCode::True => self.push(Value::Bool(true)),
                 OpCode::False => self.push(Value::Bool(false)),
+                OpCode::Pop => {
+                    self.pop();
+                }
+                OpCode::GetGlobal => {
+                    let name = self.read_constant();
+
+                    if let Value::Obj(Obj::String(name)) = name {
+                        let value = self.globals.get(name.as_ref()).ok_or_else(|| {
+                            Error::Runtime(RuntimeError::new(
+                                self.ip,
+                                &format!("Undefined variable '{}'", name.as_ref()),
+                            ))
+                        })?;
+                        self.push(value.clone());
+                    }
+                }
+                OpCode::DefineGlobal => {
+                    let name = self.read_constant();
+                    let value = self.pop();
+
+                    if let Value::Obj(Obj::String(name)) = name {
+                        self.globals.insert(name.as_ref().to_string(), value);
+                    } else {
+                        return Err(Error::Runtime(RuntimeError::new(
+                            self.ip,
+                            "Global name must be a string.",
+                        )));
+                    }
+                }
+                OpCode::SetGlobal => {
+                    let name = self.read_constant();
+
+                    if let Value::Obj(Obj::String(name)) = name {
+                        if self.globals.get(name.as_ref()).is_none() {
+                            return Err(Error::Runtime(RuntimeError::new(
+                                self.ip,
+                                &format!("Undefined variable '{}'", name.as_ref()),
+                            )));
+                        } else {
+                            self.globals.insert(
+                                name.as_ref().to_string(),
+                                self.stack.last().unwrap().clone(),
+                            );
+                        }
+                    }
+                }
                 OpCode::Equal => {
                     let b = self.pop();
                     let a = self.pop();
@@ -112,12 +165,6 @@ impl VM {
                     let value = self.pop();
                     self.push(!value);
                 }
-                OpCode::Return => {
-                    let result = self.pop();
-                    println!("{}", result);
-
-                    return Ok(());
-                }
                 OpCode::Negate => {
                     let value = self.stack.last_mut();
                     if let Some(Value::Number(v)) = value {
@@ -128,6 +175,13 @@ impl VM {
                             "Operand must be a number.",
                         )));
                     }
+                }
+                OpCode::Print => {
+                    let v = self.pop();
+                    println!("{}", v);
+                }
+                OpCode::Return => {
+                    return Ok(());
                 }
             }
         }
