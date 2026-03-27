@@ -21,7 +21,10 @@ pub enum OpCode {
     Not = 18,
     Negate = 19,
     Print = 20,
-    Return = 21,
+    Jump = 21,
+    JumpIfFalse = 22,
+    Loop = 23,
+    Return = 24,
 }
 
 impl From<u8> for OpCode {
@@ -48,7 +51,10 @@ impl From<u8> for OpCode {
             18 => OpCode::Not,
             19 => OpCode::Negate,
             20 => OpCode::Print,
-            21 => OpCode::Return,
+            21 => OpCode::Jump,
+            22 => OpCode::JumpIfFalse,
+            23 => OpCode::Loop,
+            24 => OpCode::Return,
             _ => panic!("Unknown opcode {}", value),
         }
     }

@@ -25,6 +25,16 @@ pub enum Value {
     Obj(Obj),
 }
 
+impl Value {
+    pub fn is_falsey(&self) -> bool {
+        match self {
+            Value::Bool(v) => !v,
+            Value::Nil => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Obj {
     String(Rc<str>),
@@ -92,11 +102,8 @@ impl Not for Value {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        match self {
-            Value::Bool(b) => Value::Bool(!b),
-            Value::Nil => Value::Bool(true),
-            _ => Value::Bool(false),
-        }
+        let value = self.is_falsey();
+        Value::Bool(value)
     }
 }
 

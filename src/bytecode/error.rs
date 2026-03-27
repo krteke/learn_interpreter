@@ -6,6 +6,7 @@ use crate::bytecode::token::{Token, TokenType};
 pub enum Error {
     Scan(ScanError),
     Parser(ParserError),
+    Compile(CompileError),
     Runtime(RuntimeError),
     #[error(transparent)]
     Io(std::io::Error),
@@ -15,7 +16,8 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Scan(e) => write!(f, "ScanError: {} at line {}", e.message, e.line),
-            Error::Runtime(e) => todo!(),
+            Error::Runtime(e) => write!(f, "RuntimeError: {} at line {}", e.message, e.line),
+            Error::Compile(e) => write!(f, "CompileError: {} at line {}", e.message, e.line),
             Error::Parser(e) => write!(f, "ParserError: {} at line {}", e.message, e.line),
             Error::Io(e) => write!(f, "IoError: {}", e),
         }
@@ -51,6 +53,21 @@ impl ParserError {
             lexeme: token.lex.to_string(),
             token_type: token.token_type,
             line: token.line as usize,
+            message: message.to_string(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct CompileError {
+    pub line: usize,
+    pub message: String,
+}
+
+impl CompileError {
+    pub fn new(line: usize, message: &str) -> Self {
+        Self {
+            line,
             message: message.to_string(),
         }
     }

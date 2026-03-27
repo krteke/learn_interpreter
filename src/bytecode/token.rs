@@ -107,6 +107,8 @@ impl<'a, 'i> TokenType {
             | Self::GreaterEqual
             | Self::Less
             | Self::LessEqual => Some(Compiler::binary),
+            Self::And => Some(Compiler::add),
+            Self::Or => Some(Compiler::or),
             _ => None,
         }
     }
@@ -119,6 +121,8 @@ impl<'a, 'i> TokenType {
             Self::Greater | Self::GreaterEqual | Self::Less | Self::LessEqual => {
                 Precedence::Comparison
             }
+            Self::And => Precedence::And,
+            Self::Or => Precedence::Or,
             _ => Precedence::None,
         }
     }

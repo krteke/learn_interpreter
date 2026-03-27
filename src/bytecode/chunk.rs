@@ -90,8 +90,8 @@ impl Chunk {
             OpCode::False => self.simple_instruction("False", offset),
             OpCode::Pop => self.simple_instruction("Pop", offset),
             OpCode::GetLocal => self.simple_instruction("GetLocal", offset),
-            OpCode::SetLocal => self.simple_instruction("SetLocal", offset),
-            OpCode::GetGlobal => self.simple_instruction("GetGlobal", offset),
+            OpCode::SetLocal => self.byte_instruction("SetLocal", offset),
+            OpCode::GetGlobal => self.byte_instruction("GetGlobal", offset),
             OpCode::DefineGlobal => self.simple_instruction("DefineGlobal", offset),
             OpCode::SetGlobal => self.simple_instruction("SetGlobal", offset),
             OpCode::Equal => self.simple_instruction("Equal", offset),
@@ -104,6 +104,9 @@ impl Chunk {
             OpCode::Not => self.simple_instruction("Not", offset),
             OpCode::Negate => self.simple_instruction("Negate", offset),
             OpCode::Print => self.simple_instruction("Print", offset),
+            OpCode::Jump => self.jump_instruction("Jump", 1, offset),
+            OpCode::JumpIfFalse => self.jump_instruction("JumpIfFalse", 1, offset),
+            OpCode::Loop => self.jump_instruction("Loop", -1, offset),
             OpCode::Return => self.simple_instruction("Return", offset),
         }
     }
@@ -119,6 +122,18 @@ impl Chunk {
         println!("{:-16} {:4}", name, slot);
 
         offset + 2
+    }
+
+    fn jump_instruction(&self, name: &str, sign: i32, offset: usize) -> usize {
+        let jump = u16::from_be_bytes([self.code[offset + 1], self.code[offset + 2]]);
+        println!(
+            "{:-16} {:4} -> {}",
+            name,
+            jump,
+            offset + 3 + (jump as usize * sign as usize)
+        );
+
+        offset + 3
     }
 
     fn constant_instruction(&self, name: &str, offset: usize) -> usize {

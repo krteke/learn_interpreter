@@ -188,6 +188,22 @@ impl VM {
                     let v = self.pop();
                     println!("{}", v);
                 }
+                OpCode::Jump => {
+                    let offset = self.read_u16() as usize;
+                    self.ip += offset;
+                }
+                OpCode::JumpIfFalse => {
+                    let offset = self.read_u16() as usize;
+                    if let Some(v) = self.stack.last()
+                        && v.is_falsey()
+                    {
+                        self.ip += offset;
+                    }
+                }
+                OpCode::Loop => {
+                    let offset = self.read_u16() as usize;
+                    self.ip -= offset;
+                }
                 OpCode::Return => {
                     return Ok(());
                 }
@@ -198,6 +214,11 @@ impl VM {
     fn read_byte(&mut self) -> u8 {
         self.ip += 1;
         self.chunk.code[self.ip - 1]
+    }
+
+    fn read_u16(&mut self) -> u16 {
+        self.ip += 2;
+        u16::from_be_bytes([self.chunk.code[self.ip - 2], self.chunk.code[self.ip - 1]])
     }
 
     fn read_constant(&mut self) -> Value {
