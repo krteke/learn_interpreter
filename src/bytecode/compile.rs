@@ -20,7 +20,7 @@ pub struct Compiler<'a, 'i> {
     pub parser: Parser<'a>,
     pub scanner: Scanner<'a>,
     pub chunk: Chunk,
-    pub strings: &'i mut StringInterner,
+    pub strings: &'i mut StringInterner<()>,
     pub locals: Vec<Local>,
     pub scope_depth: i32,
 }
@@ -75,7 +75,7 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a, 'i> Compiler<'a, 'i> {
-    pub fn new(source: &'a str, strings: &'i mut StringInterner) -> Self {
+    pub fn new(source: &'a str, strings: &'i mut StringInterner<()>) -> Self {
         let parser = Parser::new();
         let scanner = Scanner::new(source.as_bytes());
         let chunk = Chunk::new();
@@ -122,7 +122,7 @@ impl<'a, 'i> Compiler<'a, 'i> {
     fn synchronize(&mut self) {
         use TokenType::*;
 
-        while self.parser.current.token_type == TokenType::EOF {
+        while self.parser.current.token_type != TokenType::EOF {
             if self.parser.previous.token_type == TokenType::Semicolon {
                 return;
             }
@@ -294,8 +294,10 @@ impl<'a, 'i> Compiler<'a, 'i> {
         }
 
         let jump = (jump as u16).to_be_bytes();
-        self.emit_byte(jump[0]);
-        self.emit_byte(jump[1]);
+        let offset = offset as usize;
+
+        self.chunk.code[offset] = jump[0];
+        self.chunk.code[offset + 1] = jump[1];
 
         Ok(())
     }
@@ -433,7 +435,7 @@ impl<'a, 'i> Compiler<'a, 'i> {
 
     pub fn string(&mut self, _: bool) -> Result<()> {
         if let Some(Literal::String(s)) = &self.parser.previous.literal {
-            let interned = self.strings.intern(s);
+            let interned = self.strings.intern(s, ());
             self.emit_constant(Value::Obj(Obj::String(interned)));
             Ok(())
         } else {

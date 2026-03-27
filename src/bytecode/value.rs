@@ -1,9 +1,4 @@
-use std::{
-    collections::HashSet,
-    fmt::Display,
-    ops::{Add, Div, Mul, Not, Sub},
-    rc::Rc,
-};
+use std::{collections::HashMap, fmt::Display, ops::Not, rc::Rc};
 
 use crate::bytecode::token::Literal;
 
@@ -40,24 +35,32 @@ pub enum Obj {
     String(Rc<str>),
 }
 
-pub struct StringInterner {
-    strings: HashSet<Rc<str>>,
+pub struct StringInterner<T> {
+    strings: HashMap<Rc<str>, T>,
 }
 
-impl StringInterner {
+impl<T> StringInterner<T> {
     pub fn new() -> Self {
         Self {
-            strings: HashSet::new(),
+            strings: HashMap::new(),
         }
     }
 
-    pub fn intern(&mut self, s: &str) -> Rc<str> {
-        if let Some(existing) = self.strings.get(s) {
+    pub fn get(&self, s: &str) -> Option<&T> {
+        self.strings.get(s)
+    }
+
+    pub fn get_mut(&mut self, s: &str) -> Option<&mut T> {
+        self.strings.get_mut(s)
+    }
+
+    pub fn intern(&mut self, s: &str, value: T) -> Rc<str> {
+        if let Some((existing, _)) = self.strings.get_key_value(s) {
             return existing.clone();
         }
 
         let interned: Rc<str> = Rc::from(s);
-        self.strings.insert(interned.clone());
+        self.strings.insert(interned.clone(), value);
         interned
     }
 }
@@ -104,58 +107,5 @@ impl Not for Value {
     fn not(self) -> Self::Output {
         let value = self.is_falsey();
         Value::Bool(value)
-    }
-}
-
-impl Add for Value {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Value::Number(a), Value::Number(b)) => Value::Number(a + b),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Sub for Value {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Value::Number(a), Value::Number(b)) => Value::Number(a - b),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Mul for Value {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Value::Number(a), Value::Number(b)) => Value::Number(a * b),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Div for Value {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Value::Number(a), Value::Number(b)) => Value::Number(a / b),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl PartialOrd for Value {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (Value::Number(a), Value::Number(b)) => a.partial_cmp(b),
-            _ => None,
-        }
     }
 }

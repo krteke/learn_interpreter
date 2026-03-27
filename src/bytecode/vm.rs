@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     DEBUG,
     bytecode::{
@@ -14,8 +12,8 @@ use crate::{
 pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,
-    pub strings: StringInterner,
-    pub globals: HashMap<String, Value>,
+    pub strings: StringInterner<()>,
+    pub globals: StringInterner<Value>,
     pub stack: Vec<Value>,
 }
 
@@ -25,7 +23,7 @@ impl VM {
             chunk: Chunk::new(),
             ip: 0,
             strings: StringInterner::new(),
-            globals: HashMap::new(),
+            globals: StringInterner::new(),
             stack: Vec::new(),
         }
     }
@@ -104,7 +102,7 @@ impl VM {
                     let value = self.pop();
 
                     if let Value::Obj(Obj::String(name)) = name {
-                        self.globals.insert(name.as_ref().to_string(), value);
+                        self.globals.intern(name.as_ref(), value);
                     } else {
                         return Err(Error::Runtime(RuntimeError::new(
                             self.ip,
@@ -116,16 +114,13 @@ impl VM {
                     let name = self.read_constant();
 
                     if let Value::Obj(Obj::String(name)) = name {
-                        if self.globals.get(name.as_ref()).is_none() {
+                        if let Some(slot) = self.globals.get_mut(name.as_ref()) {
+                            *slot = self.stack.last().unwrap().clone();
+                        } else {
                             return Err(Error::Runtime(RuntimeError::new(
                                 self.ip,
                                 &format!("Undefined variable '{}'", name.as_ref()),
                             )));
-                        } else {
-                            self.globals.insert(
-                                name.as_ref().to_string(),
-                                self.stack.last().unwrap().clone(),
-                            );
                         }
                     }
                 }
@@ -239,16 +234,32 @@ impl VM {
                     value.extend_from_slice(a.as_bytes());
                     value.extend_from_slice(b.as_bytes());
 
-                    let str = self.strings.intern(&String::from_utf8(value).unwrap());
+                    let str = self.strings.intern(&String::from_utf8(value).unwrap(), ());
                     self.push(Value::Obj(Obj::String(str)));
                 }
-                _ => self.push(a + b),
+                (Value::Number(a), Value::Number(b)) => self.push(Value::Number(a + b)),
+                _ => unreachable!(),
             },
-            OpCode::Subtract => self.push(a - b),
-            OpCode::Multiply => self.push(a * b),
-            OpCode::Divide => self.push(a / b),
-            OpCode::Greater => self.push(Value::Bool(a > b)),
-            OpCode::Less => self.push(Value::Bool(a < b)),
+            OpCode::Subtract => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => self.push(Value::Number(a - b)),
+                _ => unreachable!(),
+            },
+            OpCode::Multiply => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => self.push(Value::Number(a * b)),
+                _ => unreachable!(),
+            },
+            OpCode::Divide => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => self.push(Value::Number(a / b)),
+                _ => unreachable!(),
+            },
+            OpCode::Greater => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => self.push(Value::Bool(a > b)),
+                _ => unreachable!(),
+            },
+            OpCode::Less => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => self.push(Value::Bool(a < b)),
+                _ => unreachable!(),
+            },
             _ => unreachable!(),
         }
 

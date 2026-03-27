@@ -44,7 +44,8 @@ fn repl() -> Result<()> {
 
 fn run_file(path: &str) -> Result<()> {
     let source = std::fs::read_to_string(path).map_err(Error::Io)?;
-    // interpret(&source);
+    let mut vm = VM::new();
+    vm.interpret(&source)?;
 
     Ok(())
 }
