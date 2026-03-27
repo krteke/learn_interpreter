@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use strum_macros::Display;
 
@@ -8,17 +8,22 @@ use crate::{
         chunk::Chunk,
         common::OpCode,
         error::{Error, ParserError, Result},
+        local::Local,
         scanner::Scanner,
         token::{Literal, Token, TokenType},
         value::{Obj, StringInterner, Value},
     },
 };
 
+const MAX_LOCALS: usize = u8::MAX as usize + 1;
+
 pub struct Compiler<'a, 'i> {
     pub parser: Parser<'a>,
     pub scanner: Scanner<'a>,
     pub chunk: Chunk,
     pub strings: &'i mut StringInterner,
+    pub locals: Vec<Local>,
+    pub scope_depth: i32,
 }
 
 pub struct Parser<'a> {
@@ -75,12 +80,16 @@ impl<'a, 'i> Compiler<'a, 'i> {
         let parser = Parser::new();
         let scanner = Scanner::new(source.as_bytes());
         let chunk = Chunk::new();
+        let locals = Vec::new();
+        let scope_depth = 0;
 
         Self {
             parser,
             scanner,
             chunk,
             strings,
+            locals,
+            scope_depth,
         }
     }
 
@@ -101,6 +110,14 @@ impl<'a, 'i> Compiler<'a, 'i> {
         if PRINT_CODE {
             self.current_chunk().disassemble_chunk("code");
         }
+    }
+
+    fn begin_scpoe(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.scope_depth -= 1;
     }
 
     fn synchronize(&mut self) {
@@ -149,13 +166,28 @@ impl<'a, 'i> Compiler<'a, 'i> {
     }
 
     fn statement(&mut self) -> Result<()> {
-        if self.match_type(TokenType::Print)? {
-            self.print_statement()?;
-        } else {
-            self.expression_statement()?;
+        match self.parser.current.token_type {
+            TokenType::Print => {
+                self.advance()?;
+                self.print_statement()
+            }
+            TokenType::LeftBrace => {
+                self.advance()?;
+                self.block()?;
+                self.end_scope();
+
+                Ok(())
+            }
+            _ => self.expression_statement(),
+        }
+    }
+
+    fn block(&mut self) -> Result<()> {
+        while !self.check(TokenType::RightBrace) && !self.check(TokenType::EOF) {
+            self.declaration()?;
         }
 
-        Ok(())
+        self.consume(TokenType::RightBrace, "Expect '}' after block.")
     }
 
     fn expression_statement(&mut self) -> Result<()> {
@@ -188,15 +220,39 @@ impl<'a, 'i> Compiler<'a, 'i> {
     }
 
     fn named_variable(&mut self, can_assign: bool) -> Result<()> {
-        let arg = self.identifier_constant()?;
+        let mut arg = self.resolve_local(&self.parser.previous)?;
+
+        let (get_op, set_op) = if arg != -1 {
+            (OpCode::GetLocal, OpCode::SetLocal)
+        } else {
+            arg = self.identifier_constant()? as i32;
+            (OpCode::GetGlobal, OpCode::SetGlobal)
+        };
+
         if self.match_type(TokenType::Equal)? && can_assign {
             self.expression()?;
-            self.emit_bytes(OpCode::SetGlobal as u8, arg);
+            self.emit_bytes(set_op as u8, arg as u8);
         } else {
-            self.emit_bytes(OpCode::GetGlobal as u8, arg);
+            self.emit_bytes(get_op as u8, arg as u8);
         }
 
         Ok(())
+    }
+
+    fn resolve_local(&self, token: &Token) -> Result<i32> {
+        for (i, local) in self.locals.iter().enumerate().rev() {
+            if local.name == token.lex {
+                if local.depth == -1 {
+                    return Err(Error::Parser(ParserError::new(
+                        token,
+                        "Can't read local variable in its own initializer.",
+                    )));
+                }
+                return Ok(i as i32);
+            }
+        }
+
+        Ok(-1)
     }
 
     pub fn variable(&mut self, can_assign: bool) -> Result<()> {
@@ -332,10 +388,57 @@ impl<'a, 'i> Compiler<'a, 'i> {
 
     fn parse_variable(&mut self, err_msg: &str) -> Result<u8> {
         self.consume(TokenType::Identifier, err_msg)?;
+
+        self.declare_variable()?;
+        if self.scope_depth > 0 {
+            return Ok(0);
+        }
+
         self.identifier_constant()
     }
 
+    fn declare_variable(&mut self) -> Result<()> {
+        if self.scope_depth == 0 {
+            return Ok(());
+        }
+        let token = self.parser.previous.clone();
+        for local in self.locals.iter().rev() {
+            if local.depth != -1 && local.depth < self.scope_depth {
+                break;
+            }
+
+            if local.name != token.lex {
+                return Err(Error::Parser(ParserError::new(
+                    &token,
+                    "Already a variable with this name in this scope",
+                )));
+            }
+        }
+
+        self.add_local(&token)
+    }
+
+    fn add_local(&mut self, token: &Token) -> Result<()> {
+        let local = Local::new(token.lex.to_string(), -1);
+        if self.locals.len() == MAX_LOCALS {
+            return Err(Error::Parser(ParserError::new(token, "Too many locals")));
+        }
+        self.locals.push(local);
+
+        Ok(())
+    }
+
+    fn make_init(&mut self) {
+        if let Some(l) = self.locals.last_mut() {
+            l.depth = self.scope_depth;
+        }
+    }
+
     fn define_variable(&mut self, global: u8) {
+        if self.scope_depth > 0 {
+            self.make_init();
+            return;
+        }
         self.emit_bytes(OpCode::DefineGlobal as u8, global);
     }
 

@@ -89,6 +89,8 @@ impl Chunk {
             OpCode::True => self.simple_instruction("True", offset),
             OpCode::False => self.simple_instruction("False", offset),
             OpCode::Pop => self.simple_instruction("Pop", offset),
+            OpCode::GetLocal => self.simple_instruction("GetLocal", offset),
+            OpCode::SetLocal => self.simple_instruction("SetLocal", offset),
             OpCode::GetGlobal => self.simple_instruction("GetGlobal", offset),
             OpCode::DefineGlobal => self.simple_instruction("DefineGlobal", offset),
             OpCode::SetGlobal => self.simple_instruction("SetGlobal", offset),
@@ -110,6 +112,13 @@ impl Chunk {
         println!("{}", name);
 
         offset + 1
+    }
+
+    fn byte_instruction(&self, name: &str, offset: usize) -> usize {
+        let slot = self.code[offset + 1];
+        println!("{:-16} {:4}", name, slot);
+
+        offset + 2
     }
 
     fn constant_instruction(&self, name: &str, offset: usize) -> usize {

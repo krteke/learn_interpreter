@@ -4,7 +4,7 @@ use strum_macros::Display;
 
 use crate::bytecode::compile::{Compiler, ParseFn, Precedence};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub lex: Cow<'a, str>,
@@ -23,7 +23,7 @@ impl<'a> Token<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Number(f64),
     String(String),
